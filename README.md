@@ -7,7 +7,7 @@
 ```bash
 clang++ -std=c++17 -c main.cpp -o main.o
 clang++ -std=c++17 -c user.cpp -o user.o
-ld -lc++ -lc main.o user.o # либо clang++ main.o user.o
+clang++ main.o user.o
 ```
 
 Аналогом этих действий будет являться запуск команды ```clang++ -std=c++17 main.cpp user.cpp``` она выполнит все те же операции и произведет файл ./a.out
