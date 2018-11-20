@@ -1,7 +1,7 @@
 # Стягиваем репозиторий к себе
 - Создай каталог src - `mkdir src`
 - Перейди в него - `cd src`
-- Скачай себе репозиторий - `git clone git@github.com:460s/meeting_backend.git`
+- Скачай себе репозиторий - `git clone https://github.com/460s/meeting_backend.git`
 - Перейди в склонированный каталог - `cd meeting_backend`
   
 # Настройка git
