@@ -30,12 +30,3 @@ cd build # переходим в него
 cmake .. # запускаем cmake с указанием каталога с CmakeLists.txt, для создания Makefile
 make # запускаем make для сборки проекта
 ```
-
-# Шпаргалка git
-- Склонировать репозиторий - git clone git@github.com:460s/meeting_backend.git 
-- Создать бранч и переключиться в его git checkout -b new-branch
-- Переключиться в ранее созданный бранч git chekcout old-branch
-- Скачать изменения с репозитория git pull
-- Добавить файл в коммит git add
-- Зафиксировать свои изменения git commit
-- Залить изменения в репозиторий git push
