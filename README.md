@@ -6,4 +6,4 @@
 Находясь в каталоге с проектом делаем: ```make``` и видим наш бинарь hello
 
 # Едем дальше
-Переходим в бранч hello-cmake
+Переходим в бранч [hello-cmake](https://github.com/460s/meeting_backend/tree/hello-cmake)
