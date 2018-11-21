@@ -7,3 +7,6 @@ cd build # переходим в него
 cmake .. # запускаем cmake с указанием каталога с CmakeLists.txt, для создания Makefile
 make # запускаем make для сборки проекта
 ```
+
+# Едем дальше
+Переходим в бранч [hello-conan](https://github.com/460s/meeting_backend/tree/hello-conan)
