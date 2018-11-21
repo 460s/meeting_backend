@@ -59,5 +59,6 @@ no changes added to commit (use "git add" and/or "git commit -a")
 И в нем сказано про `git add`, `git checkout`, `git commit -a`. В общем читай то, что выдает git и будет хорошо 
 
 # Едем дальше
-Теперь переходим к бранчу hello
+Переходим в бранч [hello-conan](https://github.com/460s/meeting_backend/tree/hello)
+
 Сделайте ```git co hello```
