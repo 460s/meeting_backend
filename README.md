@@ -81,6 +81,9 @@ strings .conan/.../libget_user.a | grep World
 Строка должна быть
 
 # conan cheetsheet
-conan create . demo/testing
-conan install .. # путь до conanfile.txt
-conan info .. # путь до conanfile посмотреть зависимости проекта
+- conan create . demo/testing
+- conan install .. # путь до conanfile.txt
+- conan info .. # путь до conanfile посмотреть зависимости проекта
+
+# Едем дальше
+Первое занятие закончено. Домашнее задание
