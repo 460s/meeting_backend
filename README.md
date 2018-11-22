@@ -24,6 +24,8 @@ cmake
 Poco:shared=True
 ```
 
+Возможно, для сборки потребуется доустановить пакеты `libc++-dev` и `libc++abi-dev`.
+
 Написать программу которая, принимая на stdin строку вида `https://github.com/460s/meeting_backend/edit/hello-conan/README.md`
 выводит в stdout json документ вида
 ```
