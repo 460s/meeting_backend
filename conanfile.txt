@@ -1,6 +1,9 @@
 [requires]
-get_user/0.0.1@demo/testing
+Poco/1.9.0@pocoproject/stable
+jsonformoderncpp/3.3.0@vthiery/stable
 
 [generators]
 cmake
 
+[options]
+Poco:shared=True
