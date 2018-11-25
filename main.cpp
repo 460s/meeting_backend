@@ -2,8 +2,6 @@
 #include <Poco/URI.h>
 #include <nlohmann/json.hpp>
 
-using namespace std;
-
 int main() {
 	std::string string_uri;
 	std::cin >> string_uri;
