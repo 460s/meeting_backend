@@ -1,15 +1,22 @@
 #include "Poco/URI.h"
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 using namespace std;
 
-int main(int argc, char** argv) {
-	std::string string_uri = "https://github.com/460s/meeting_backend/edit/hello-conan/README.md";
-	// cin >> string_uri;
-	Poco::URI uri(string_uri);
-	std::string scheme(uri.getScheme()); // "http"
-	std::string host(uri.getHost()); // "www.appinf.com"
-	std::string path(uri.getPath()); // "/sample"
-	cout << scheme << endl << host << endl << path;
-	return 0;	
+int main(int argc, char **argv)
+{
+	string uri_string = "";
+	cin >> uri_string;
+	Poco::URI uri(uri_string);
+	string scheme(uri.getScheme());
+	string host(uri.getHost());
+	string path(uri.getPath());
+
+	nlohmann::json result;
+	result["scheme"] = scheme;
+	result["host"] = host;
+	result["path"] = path;
+	cout << result << endl;
+	return 0;
 }
