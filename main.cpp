@@ -7,9 +7,9 @@ int main() {
 	std::cin >> string_uri;
 	Poco::URI uri1(string_uri);
 	nlohmann::json result;
-	result["schema"]=uri1.getScheme();
-	result["host"]=uri1.getHost();
-	result["path"]=uri1.getPath();
+	result["schema"] = uri1.getScheme();
+	result["host"] = uri1.getHost();
+	result["path"] = uri1.getPath();
 	std::cout << result << std::endl;
 	return 0;
 }
