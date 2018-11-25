@@ -11,17 +11,11 @@ int main(int argc, char** argv)
 	std::string host(uri1.getHost()); 
 	std::string path(uri1.getPath());
 
-	nlohmann::json schemeOut;
-	schemeOut["scheme"] = scheme;
-	std::cout << schemeOut << std::endl;
-
-	nlohmann::json hostOut;
-	hostOut["host"] = host;
-	std::cout << hostOut << std::endl;
-
-	nlohmann::json pathOut;
-	pathOut["path"] = path;
-	std::cout << pathOut << std::endl;
+	nlohmann::json result;
+	result["scheme"] = scheme;
+	result["host"] = host;
+	result["path"] = path;
+	std::cout << result << std::endl;
 
 	return 0;
 
