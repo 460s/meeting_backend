@@ -6,7 +6,9 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-	Poco::URI uri1("https://github.com/460s/meeting_backend/edit/hello-conan/README.md");
+	std::string input;
+	std::cin >> input;
+	Poco::URI uri1(input);
 	std::string scheme(uri1.getScheme());
 	std::string host(uri1.getHost()); 
 	std::string path(uri1.getPath());
