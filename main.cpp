@@ -14,6 +14,6 @@ int main() {
 	result["host"] = uri.getHost();
 	result["path"] = uri.getPath();
 
-	std::cout << result; 
+	std::cout << result << std::endl; 
 	return 0;
 }
