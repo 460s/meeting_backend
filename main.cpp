@@ -7,11 +7,11 @@ using namespace std;
 using json = nlohmann::json;
 
 
-string ifStringEmpty(string s)
+json ifStringEmpty(json s)
 {
 	if (s == "")
 	{
-		return "none";
+		return nullptr;
 	}
 	return s;
 }
@@ -22,15 +22,11 @@ int main()
 	cin >> text;
 	Poco::URI uri(text);
 
-	string scheme(ifStringEmpty(uri.getScheme()));
-	string host(ifStringEmpty(uri.getHost()));
-	string path(ifStringEmpty(uri.getPath()));
-
 	json jsonResult =
 	{
-		{"scheme", scheme},
-		{"host", host},
-		{"path", path}
+		{"scheme", ifStringEmpty(uri.getScheme())},
+		{"host", ifStringEmpty(uri.getHost())},
+		{"path", ifStringEmpty(uri.getPath())}
 	};
 
 	cout << jsonResult << endl;
