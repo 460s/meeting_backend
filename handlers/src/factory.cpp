@@ -22,7 +22,7 @@ HTTPRequestHandler *Factory::PostMethodHandlers(const std::string &uri) const {
 Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HTTPServerRequest &request) {
 	using Poco::Net::HTTPRequest;
 
-	Poco::Net::HTTPRequestHandler *result;
+	Poco::Net::HTTPRequestHandler *result = nullptr;
 	const auto method = request.getMethod();
 	const auto uri = request.getURI();
 	if (method == HTTPRequest::HTTP_GET) {
