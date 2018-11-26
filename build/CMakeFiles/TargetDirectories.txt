@@ -1,0 +1,3 @@
+/home/nerd/homework/meeting_backend/build/CMakeFiles/rebuild_cache.dir
+/home/nerd/homework/meeting_backend/build/CMakeFiles/parse-uri.dir
+/home/nerd/homework/meeting_backend/build/CMakeFiles/edit_cache.dir
