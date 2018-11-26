@@ -1,0 +1,9 @@
+[requires]
+Poco/1.9.0@pocoproject/stable
+jsonformoderncpp/3.3.0@vthiery/stable
+
+[generators]
+cmake
+
+[options]
+Poco:shared=True
