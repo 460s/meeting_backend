@@ -1,8 +1,8 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <handlers.hpp>
-#include <nlohmann/json.hpp>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 namespace handlers {
 
@@ -18,7 +18,7 @@ using nlohmann::json;
 // сериализация (маршалинг)
 void to_json(json &j, const Meeting &m) {
 	j = json{
-		{"id", m.id},
+	    {"id", m.id},
 	    {"name", m.name},
 	    {"description", m.description},
 	    {"published", m.published}};
