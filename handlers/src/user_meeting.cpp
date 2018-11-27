@@ -109,7 +109,7 @@ Storage &GetStorage() {
 
 void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
     try {
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
+		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_CREATED);
 		nlohmann::json j = nlohmann::json::parse(request.stream());
 		auto &storage = GetStorage();
 		Meeting meeting = j;
