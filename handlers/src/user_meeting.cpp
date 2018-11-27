@@ -124,9 +124,9 @@ void UserMeeting::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net
 	std::regex_search(request.getURI(), match_result, std::regex("\\d+"));
 	int id = std::stoi(match_result.str());
 	std::vector<Meeting> meetings = GetStorage().GetList();
-	auto pos_meeting = std::find_if(meetings.begin(), meetings.end(), [&id](Meeting meeting) {
-				return meeting.id == id;
-			});
+	auto pos_meeting = std::find_if(meetings.begin(), meetings.end(), [&id](const Meeting &meeting) {
+		return meeting.id == id;
+	});
 	if (pos_meeting != meetings.end()) {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "Details of meeting");
 		response.send() << json(*pos_meeting);
