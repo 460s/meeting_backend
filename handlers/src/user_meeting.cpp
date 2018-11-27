@@ -88,8 +88,9 @@ public:
 	}
 
 	Meeting Update(int id, const Meeting &meeting) override {
-		m_meetings[id] = meeting;
-		return m_meetings.at(id);
+		m_meetings.erase(id);
+		m_meetings.insert(std::pair<int,Meeting>(meeting.id, meeting));
+		return m_meetings.at(meeting.id);
 	}
 
 	void Delete(int id) override {
@@ -106,9 +107,8 @@ Storage &GetStorage() {
 	return storage;
 }
 
-
 void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	try {
+    try {
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 		nlohmann::json j = nlohmann::json::parse(request.stream());
 		auto &storage = GetStorage();
@@ -125,9 +125,11 @@ void UserMeetingList::handleRequest(Poco::Net::HTTPServerRequest &request, Poco:
 	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 	auto &storage = GetStorage();
 	nlohmann::json result = nlohmann::json::array();
+
 	for (auto meeting : storage.GetList()) {
 		result.push_back(meeting);
 	}
+
 	response.send() << result;
 }
 
@@ -141,13 +143,11 @@ void UserMeetingGetById::handleRequest(Poco::Net::HTTPServerRequest &request, Po
 
     if (!opt_meeting){
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND, "Такая встреча отсутствует");
-        response.send();
+		response.send();
     }
 
-    nlohmann::json result;
     response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "Параметры встречи");
-    handlers::to_json(result, opt_meeting.value());
-    response.send() << result;
+    response.send() << json(opt_meeting.value());
 }
 
 void UserMeetingPatch::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
@@ -159,24 +159,27 @@ void UserMeetingPatch::handleRequest(Poco::Net::HTTPServerRequest &request, Poco
 	int id = std::stoi(match_rslt.str());
 	std::optional<Meeting> opt_existing_meeting = storage.GetById(id);
     Meeting newMeeting;
+    int j_id = -1;
     try {
 	    nlohmann::json j = nlohmann::json::parse(request.stream());
 	    newMeeting = j;
+	    j_id=j.at("id");
     } catch (json::exception &e) {
         response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST, "Ошибки в параметрах встречи");
         response.send();
     }
-    std::optional<Meeting> opt_is_exist_new_meeting = storage.GetById(newMeeting.id);
+    std::optional<Meeting> opt_is_exist_new_meeting = storage.GetById(j_id);
 
-    if (opt_is_exist_new_meeting){
+    if (opt_is_exist_new_meeting && j_id != id){
         response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_CONFLICT, "Встреча с таким ID уже есть в системе");
+        response.send();
     }
 
 	if (!opt_existing_meeting){
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND, "Такая встреча отсутствует");
 		response.send();
 	}
-
+	newMeeting.id = j_id;
     response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "Параметры встречи");
     response.send() << json(storage.Update(id, newMeeting));
 }
