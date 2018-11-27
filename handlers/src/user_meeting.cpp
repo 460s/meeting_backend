@@ -141,7 +141,7 @@ void UserMeetingChange::handleRequest(Poco::Net::HTTPServerRequest &request, Poc
 	int id = std::stoi(match_result.str());
 	if (storage.Contain(id)) {
 		try {
-			Meeting new_meeting = nlohmann::json::parse(request.stream();
+			Meeting new_meeting = nlohmann::json::parse(request.stream());
 			storage.Change(id, new_meeting);
 			response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "Parameters of meeting");
 			response.send() << json(new_meeting);
