@@ -8,8 +8,13 @@
 namespace handlers {
 
 HTTPRequestHandler *Factory::GetMethodHandlers(const std::string &uri) const {
+    std::regex user_meeting_uri_regex("\\/user\\/meeting\\/.[0-9]*$");
+    std::smatch match;
+
 	if (uri == "/user/meeting") {
 		return new UserMeetingList();
+	} else if (std::regex_search(uri.begin(), uri.end(), match, user_meeting_uri_regex)) {
+        return new UserMeeting();
 	}
 	return nullptr;
 }

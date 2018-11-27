@@ -69,7 +69,6 @@ public:
             return false;
         }
     }
-
     void Update(int id, Meeting &meeting) override {
         meeting.id = id;
         m_meetings[id] = meeting;
@@ -147,5 +146,27 @@ void UserMeetingPatch::handleRequest(Poco::Net::HTTPServerRequest &request, Poco
     }
     response.send();
 }
+
+    void UserMeeting::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+        auto &storage = GetStorage();
+        int meeting_id = std::stoi(split(request.getURI(), '/')[3]);
+        //std::vector<Meeting> meetings = GetStorage().GetList();
+        Meeting searching_meeting;
+
+        if(storage.Exist(meeting_id)) {
+            for (auto meeting : storage.GetList()) {
+                if (meeting.id == meeting_id)
+                    searching_meeting = meeting;
+            }
+
+            response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
+            response.send() << json(searching_meeting);
+
+        } else {
+            response.setStatus(Poco::Net::HTTPServerResponse::HTTP_FORBIDDEN);
+            response.send();
+        }
+        response.send();
+    }
 
 } // namespace handlers

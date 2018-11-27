@@ -18,4 +18,6 @@ REGISTER_HANDLER(UserMeetingDelete);
 
 REGISTER_HANDLER(UserMeetingPatch);
 
+REGISTER_HANDLER(UserMeeting);
+
 }
