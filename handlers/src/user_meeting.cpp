@@ -24,7 +24,8 @@ using nlohmann::json;
 
 // сериализация (маршалинг)
 void to_json(json &j, const Meeting &m) {
-	j = json{
+	j = json
+	{
 	    {"id", m.id},
 	    {"name", m.name},
 	    {"description", m.description},
@@ -34,7 +35,8 @@ void to_json(json &j, const Meeting &m) {
 	    {"signup_to_date", m.signup_to_date},
 	    {"from_date", m.from_date},
 	    {"to_date", m.to_date},
-	    {"published", m.published}};
+	    {"published", m.published}
+	};
 }
 
 // десериализация (анмаршалинг, распаковка)
@@ -123,8 +125,8 @@ void UserMeeting::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net
 	int id = std::stoi(match_result.str());
 	std::vector<Meeting> meetings = GetStorage().GetList();
 	auto pos_meeting = std::find_if(meetings.begin(), meetings.end(), [&id](Meeting meeting) {
-							return meeting.id == id;
-						});
+				return meeting.id == id;
+			});
 	if (pos_meeting != meetings.end()) {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "Details of meeting");
 		response.send() << json(*pos_meeting);
