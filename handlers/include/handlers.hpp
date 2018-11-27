@@ -14,4 +14,10 @@ REGISTER_HANDLER(UserMeetingList);
 
 REGISTER_HANDLER(UserMeetingCreate);
 
+REGISTER_HANDLER(UserMeetingGetById);
+
+REGISTER_HANDLER(UserMeetingDelete);
+
+REGISTER_HANDLER(UserMeetingPatch);
+
 }

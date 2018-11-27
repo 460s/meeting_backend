@@ -1,3 +1,5 @@
+#include <regex>
+#include <optional>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <handlers.hpp>
@@ -10,6 +12,12 @@ struct Meeting {
 	int id;
 	std::string name;
 	std::string description;
+    std::string address;
+    std::string signup_description;
+    int signup_from_date;
+    int signup_to_date;
+    int from_date;
+    int to_date;
 	bool published;
 };
 
@@ -21,6 +29,12 @@ void to_json(json &j, const Meeting &m) {
 	    {"id", m.id},
 	    {"name", m.name},
 	    {"description", m.description},
+        {"address", m.address},
+        {"signup_description", m.signup_description},
+        {"signup_from_date", m.signup_from_date},
+        {"signup_to_date", m.signup_to_date},
+        {"from_date", m.from_date},
+        {"to_date", m.to_date},
 	    {"published", m.published}};
 }
 
@@ -28,24 +42,34 @@ void to_json(json &j, const Meeting &m) {
 void from_json(const json &j, Meeting &m) {
 	j.at("name").get_to(m.name);
 	j.at("description").get_to(m.description);
+	j.at("address").get_to(m.address);
+    j.at("signup_description").get_to(m.signup_description);
+    j.at("signup_from_date").get_to(m.signup_from_date);
+    j.at("signup_to_date").get_to(m.signup_to_date);
+    j.at("from_date").get_to(m.from_date);
+    j.at("to_date").get_to(m.to_date);
 	j.at("published").get_to(m.published);
 }
 
 class Storage {
 public:
 	using MeetingList = std::vector<Meeting>;
-	virtual void Save(Meeting &meeting) = 0;
+	virtual void Create(Meeting &meeting) = 0;
 	virtual MeetingList GetList() = 0;
+	virtual std::optional<Meeting> GetById(int id) = 0;
+	virtual Meeting Update(int id, const Meeting &meeting) = 0;
+	virtual void Delete(int id) = 0;
 	virtual ~Storage() {}
 };
 
 class MapStorage : public Storage {
 public:
-	void Save(Meeting &meeting) override {
-		int id = m_meetings.size();
+	void Create(Meeting &meeting) override {
+	    int id = ++this->last_id;
 		meeting.id = id;
 		m_meetings[id] = meeting;
 	}
+
 	Storage::MeetingList GetList() override {
 		Storage::MeetingList list;
 		for (auto [id, meeting] : m_meetings) {
@@ -54,14 +78,47 @@ public:
 		return list;
 	}
 
+	std::optional<Meeting> GetById(int id) override {
+        MeetingMap::iterator val_pos;
+        val_pos = m_meetings.find(id);
+        if(val_pos != m_meetings.end())
+            return val_pos->second;
+        else
+            return std::nullopt;
+	}
+
+	Meeting Update(int id, const Meeting &meeting) override {
+		m_meetings[id] = meeting;
+		return m_meetings.at(id);
+	}
+
+	void Delete(int id) override {
+	    m_meetings.erase(id);
+	}
 private:
 	using MeetingMap = std::map<int, Meeting>;
 	MeetingMap m_meetings;
+	int last_id = 0;
 };
 
 Storage &GetStorage() {
 	static MapStorage storage;
 	return storage;
+}
+
+
+void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+	try {
+		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
+		nlohmann::json j = nlohmann::json::parse(request.stream());
+		auto &storage = GetStorage();
+		Meeting meeting = j;
+		storage.Create(meeting);
+		response.send() << json(meeting);
+	} catch (json::exception &e) {
+		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST, "Ошибки в параметрах встречи");
+		response.send();
+	}
 }
 
 void UserMeetingList::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
@@ -74,15 +131,72 @@ void UserMeetingList::handleRequest(Poco::Net::HTTPServerRequest &request, Poco:
 	response.send() << result;
 }
 
-void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
-	nlohmann::json j = nlohmann::json::parse(request.stream());
-	std::cout << "1" << std::endl;
-	auto &storage = GetStorage();
-	Meeting meeting = j;
-	storage.Save(meeting);
+void UserMeetingGetById::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+    auto &storage = GetStorage();
+    std::smatch match_rslt;
+    std::regex_search(request.getURI(), match_rslt, std::regex("\\d+"));
 
-	response.send() << json(meeting);
+    int id = std::stoi(match_rslt.str());
+    std::optional<Meeting> opt_meeting = storage.GetById(id);
+
+    if (!opt_meeting){
+		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND, "Такая встреча отсутствует");
+        response.send();
+    }
+
+    nlohmann::json result;
+    response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "Параметры встречи");
+    handlers::to_json(result, opt_meeting.value());
+    response.send() << result;
+}
+
+void UserMeetingPatch::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+
+	auto &storage = GetStorage();
+	std::smatch match_rslt;
+	std::regex_search(request.getURI(), match_rslt, std::regex("\\d+"));
+
+	int id = std::stoi(match_rslt.str());
+	std::optional<Meeting> opt_existing_meeting = storage.GetById(id);
+    Meeting newMeeting;
+    try {
+	    nlohmann::json j = nlohmann::json::parse(request.stream());
+	    newMeeting = j;
+    } catch (json::exception &e) {
+        response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST, "Ошибки в параметрах встречи");
+        response.send();
+    }
+    std::optional<Meeting> opt_is_exist_new_meeting = storage.GetById(newMeeting.id);
+
+    if (opt_is_exist_new_meeting){
+        response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_CONFLICT, "Встреча с таким ID уже есть в системе");
+    }
+
+	if (!opt_existing_meeting){
+		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND, "Такая встреча отсутствует");
+		response.send();
+	}
+
+    response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "Параметры встречи");
+    response.send() << json(storage.Update(id, newMeeting));
+}
+
+void UserMeetingDelete::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+    auto &storage = GetStorage();
+    std::smatch match_rslt;
+    std::regex_search(request.getURI(), match_rslt, std::regex("\\d+"));
+
+    int id = std::stoi(match_rslt.str());
+    std::optional<Meeting> opt_meeting = storage.GetById(id);
+
+    if (!opt_meeting){
+        response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND, "Такая встреча отсутствует");
+        response.send();
+    }
+
+    storage.Delete(id);
+    response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT, "Встреча удалена");
+    response.send();
 }
 
 } // namespace handlers
