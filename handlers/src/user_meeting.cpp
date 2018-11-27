@@ -3,6 +3,7 @@
 #include <handlers.hpp>
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include <sstream>
 
 namespace handlers {
 
@@ -35,6 +36,9 @@ class Storage {
 public:
 	using MeetingList = std::vector<Meeting>;
 	virtual void Save(Meeting &meeting) = 0;
+    virtual void Delete(int id) = 0;
+    virtual bool Exist(int meeting_id) = 0;
+    virtual void Update(int id, Meeting &meeting) = 0;
 	virtual MeetingList GetList() = 0;
 	virtual ~Storage() {}
 };
@@ -53,6 +57,23 @@ public:
 		}
 		return list;
 	}
+    void Delete(int id) override {
+        auto meeting = m_meetings.find(id);
+        m_meetings.erase (meeting);
+    }
+    bool Exist(int meeting_id) override {
+        auto meeting = m_meetings.find(meeting_id);
+        if ( meeting != m_meetings.end()){
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    void Update(int id, Meeting &meeting) override {
+        meeting.id = id;
+        m_meetings[id] = meeting;
+    }
 
 private:
 	using MeetingMap = std::map<int, Meeting>;
@@ -62,6 +83,16 @@ private:
 Storage &GetStorage() {
 	static MapStorage storage;
 	return storage;
+}
+
+std::vector<std::string> split(const std::string &str_to_split, char delimeter) {
+    std::stringstream string_stream(str_to_split);
+    std::string item;
+    std::vector<std::string> splited_strings;
+    while (std::getline(string_stream, item, delimeter)) {
+        splited_strings.push_back(item);
+    }
+    return splited_strings;
 }
 
 void UserMeetingList::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
@@ -75,14 +106,46 @@ void UserMeetingList::handleRequest(Poco::Net::HTTPServerRequest &request, Poco:
 }
 
 void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
-	nlohmann::json j = nlohmann::json::parse(request.stream());
-	std::cout << "1" << std::endl;
-	auto &storage = GetStorage();
-	Meeting meeting = j;
-	storage.Save(meeting);
+    auto &storage = GetStorage();
+    try {
+        nlohmann::json j = nlohmann::json::parse(request.stream());
+        Meeting meeting = j;
+        storage.Save(meeting);
+        response.setStatus(Poco::Net::HTTPServerResponse::HTTP_CREATED);
+        response.send();
+    } catch (std::exception &e) {
+        response.setStatus(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
+        response.send();
+    }
+}
 
-	response.send() << json(meeting);
+void UserMeetingDelete::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+    auto &storage = GetStorage();
+    int meeting_id = std::stoi(split(request.getURI(), '/')[3]);
+    if (storage.Exist(meeting_id)) {
+        storage.Delete(meeting_id);
+        response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT);
+    } else {
+        response.setStatus(Poco::Net::HTTPServerResponse::HTTP_FORBIDDEN);
+    }
+    response.send();
+}
+
+void UserMeetingPatch::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+    auto &storage = GetStorage();
+    int meeting_id = std::stoi(split(request.getURI(), '/')[3]);
+    if(storage.Exist(meeting_id)){
+        try {
+            Meeting meeting = nlohmann::json::parse(request.stream());
+            storage.Update(meeting_id, meeting);
+            response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
+        } catch (...) {
+            response.setStatus(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
+        }
+    } else {
+        response.setStatus(Poco::Net::HTTPServerResponse::HTTP_FORBIDDEN);
+    }
+    response.send();
 }
 
 } // namespace handlers
