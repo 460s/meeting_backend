@@ -11,7 +11,9 @@
 namespace handlers {
 
 REGISTER_HANDLER(UserMeetingList);
-
 REGISTER_HANDLER(UserMeetingCreate);
+REGISTER_HANDLER(UserMeetingDetails);
+REGISTER_HANDLER(UserMeetingEditDetails);
+REGISTER_HANDLER(UserMeetingDelete);
 
 }
