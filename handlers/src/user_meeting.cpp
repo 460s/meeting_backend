@@ -3,6 +3,7 @@
 #include <handlers.hpp>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <exception>
 
 namespace handlers {
 
@@ -40,7 +41,6 @@ public:
 	virtual int Delete(int id) = 0;
 	virtual ~Storage() {}
 	virtual Meeting Get(int ident) = 0;
-	virtual int size() = 0;
 };
 
 class MapStorage : public Storage {
@@ -77,9 +77,7 @@ public:
 		for (auto [id, meeting] : m_meetings) {
 			if (id == ident) return meeting;
 		}
-	}
-	int size() override {
-		return m_meetings.size();
+		throw 1;
 	}
 
 private:
@@ -118,7 +116,7 @@ void UserMeetingPatch::handleRequest(Poco::Net::HTTPServerRequest &request, Poco
 
 	auto &storage = GetStorage();
 	Meeting meeting = j;
-	int id = std::stoi(request.getURI().substr(14));
+	int id = std::stoi(request.getURI().substr(request.getURI().rfind("/")+1));
 	int resp = storage.Patch(id, meeting);
 	if (resp == 0) {
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
@@ -131,7 +129,7 @@ void UserMeetingPatch::handleRequest(Poco::Net::HTTPServerRequest &request, Poco
 
 void UserMeetingDelete::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	auto &storage = GetStorage();
-	int id = std::stoi(request.getURI().substr(14));
+	int id = std::stoi(request.getURI().substr(request.getURI().rfind("/")+1));
 	int resp = storage.Delete(id);
 	if (resp == 0) {
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
@@ -143,14 +141,15 @@ void UserMeetingDelete::handleRequest(Poco::Net::HTTPServerRequest &request, Poc
 
 void UserMeetingGet::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	auto &storage = GetStorage();
-	int id = std::stoi(request.getURI().substr(14));
-	if (id < storage.size()) {
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
+	int id = std::stoi(request.getURI().substr(request.getURI().rfind("/")+1));
+	try{
 		Meeting resp = storage.Get(id);
+		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 		response.send() << json(resp);
-	} else
+	}catch(...){
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 		response.send() << "Hasn't meeting with id = " << id;
+	}
 }
 
 } // namespace handlers

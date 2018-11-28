@@ -7,12 +7,13 @@
 namespace handlers {
 
 HTTPRequestHandler *Factory::GetMethodHandlers(const std::string &uri) const {
+	std::cout << uri.substr(0, uri.rfind("/"));
 	if (uri == "/user/meeting") {
 		return new UserMeetingList();
-	} else if (uri.substr(0, 13) == "/user/meeting"){
+	} else if (uri.substr(0, uri.rfind("/")) == "/user/meeting") {
 		return new UserMeetingGet();
 	}
-		return nullptr;
+	return nullptr;
 }
 
 HTTPRequestHandler *Factory::PostMethodHandlers(const std::string &uri) const {
