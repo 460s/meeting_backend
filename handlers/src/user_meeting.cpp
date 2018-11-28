@@ -47,6 +47,7 @@ void from_json(const json &j, Meeting &m) {
 	j.at("signup_from_date").get_to(m.signup_from_date);
 	j.at("signup_to_date").get_to(m.signup_to_date);
 	j.at("from_date").get_to(m.from_date);
+	j.at("to_date").get_to(m.to_date);
 	j.at("published").get_to(m.published);
 }
 
