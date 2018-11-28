@@ -8,4 +8,15 @@
 * Подсказки по SQL командам: http://www.sqltutorial.org/sql-cheat-sheet/
 * Мини гайд C++ https://github.com/adambard/learnxinyminutes-docs/blob/master/ru-ru/c%2B%2B-ru.html.markdown
 
+В приложении условимся использовать минимальную структуру данных:
+```
+struct Meeting {
+	std::optional<int> id;
+	std::string name;
+	std::string description;
+	std::string address;
+	bool published;
+};
+```
+
 
