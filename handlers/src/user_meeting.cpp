@@ -11,12 +11,12 @@ struct Meeting {
 	int id;
 	std::string name;
 	std::string description;
-	/*std::string address;
+	std::string address;
 	std::string signup_description;
 	int signup_from_date;
 	int signup_to_date;
 	int from_date;
-	int to_date;*/
+	int to_date;
 	bool published;
 };
 
@@ -28,12 +28,12 @@ void to_json(json &j, const Meeting &m) {
 	    {"id", m.id},
 		{"name", m.name},
 		{"description", m.description},
-		/*{"address", m.address},
+		{"address", m.address},
 		{"signup_description", m.signup_description},
 		{"signup_from_date", m.signup_from_date},
 		{"signup_to_date", m.signup_to_date},
 		{"from_date", m.from_date},
-		{"to_date", m.to_date},*/
+		{"to_date", m.to_date},
 		{"published", m.published}
 	};
 }
