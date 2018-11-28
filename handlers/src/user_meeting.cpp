@@ -81,12 +81,7 @@ public:
 	}
 
 	bool Contain(int id) override {
-		auto search = m_meetings.find(id);
-		if (search != m_meetings.end()) {
-			return true;
-		} else {
-			return false;
-		}
+		return m_meetings.find(id) != m_meetings.end();
 	}
 
 	Storage::MeetingList GetList() override {
