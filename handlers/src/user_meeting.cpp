@@ -42,11 +42,11 @@ void to_json(json &j, const Meeting &m) {
 void from_json(const json &j, Meeting &m) {
 	j.at("name").get_to(m.name);
 	j.at("description").get_to(m.description);
-	/*j.at("address").get_to(m.address);
+	j.at("address").get_to(m.address);
 	j.at("signup_description").get_to(m.signup_description);
 	j.at("signup_from_date").get_to(m.signup_from_date);
 	j.at("signup_to_date").get_to(m.signup_to_date);
-	j.at("from_date").get_to(m.from_date);*/
+	j.at("from_date").get_to(m.from_date);
 	j.at("published").get_to(m.published);
 }
 
