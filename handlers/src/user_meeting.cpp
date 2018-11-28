@@ -114,39 +114,42 @@ void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poc
 }
 
 void UserMeetingPatch::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
-
 	nlohmann::json j = nlohmann::json::parse(request.stream());
 
 	auto &storage = GetStorage();
 	Meeting meeting = j;
 	int id = std::stoi(request.getURI().substr(14));
 	int resp = storage.Patch(id, meeting);
-	if (resp == 0)
+	if (resp == 0) {
+		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 		response.send() << json(meeting);
-	else
+	} else {
+		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 		response.send() << "Hasn't meeting with id = " << id;
+	}
 }
 
 void UserMeetingDelete::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 	auto &storage = GetStorage();
 	int id = std::stoi(request.getURI().substr(14));
 	int resp = storage.Delete(id);
 	if (resp == 0) {
+		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 		response.send() << "Success";
 	} else
+		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 		response.send() << "Hasn't meeting with id = " << id;
 }
 
 void UserMeetingGet::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 	auto &storage = GetStorage();
 	int id = std::stoi(request.getURI().substr(14));
 	if (id < storage.size()) {
+		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 		Meeting resp = storage.Get(id);
 		response.send() << json(resp);
 	} else
+		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 		response.send() << "Hasn't meeting with id = " << id;
 }
 
