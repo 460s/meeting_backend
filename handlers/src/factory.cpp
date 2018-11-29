@@ -2,7 +2,10 @@
 #include <handlers.hpp>
 #include <handlers/error.hpp>
 #include <handlers/factory.hpp>
+<<<<<<< HEAD
 #include <nlohmann/json.hpp>
+=======
+>>>>>>> upstream/develop
 #include <regex>
 
 namespace handlers {
@@ -10,8 +13,13 @@ namespace handlers {
 HTTPRequestHandler *Factory::GetMethodHandlers(const std::string &uri) const {
 	if (uri == "/user/meeting") {
 		return new UserMeetingList();
+<<<<<<< HEAD
 	} else if (std::regex_match(uri, std::regex("/user/meeting/\\d+"))) {
 		return new UserMeeting();
+=======
+	} else if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+		return new UserMeetingRead(std::stoi(m[1]));
+>>>>>>> upstream/develop
 	}
 	return nullptr;
 }
@@ -24,15 +32,25 @@ HTTPRequestHandler *Factory::PostMethodHandlers(const std::string &uri) const {
 }
 
 HTTPRequestHandler *Factory::PatchMethodHandlers(const std::string &uri) const {
+<<<<<<< HEAD
 	if (std::regex_match(uri, std::regex("/user/meeting/\\d+"))) {
 		return new UserMeetingChange();
+=======
+	if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+		return new UserMeetingUpdate(std::stoi(m[1]));
+>>>>>>> upstream/develop
 	}
 	return nullptr;
 }
 
 HTTPRequestHandler *Factory::DeleteMethodHandlers(const std::string &uri) const {
+<<<<<<< HEAD
 	if (std::regex_match(uri, std::regex("/user/meeting/\\d+"))) {
 		return new UserMeetingDelete();
+=======
+	if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+		return new UserMeetingDelete(std::stoi(m[1]));
+>>>>>>> upstream/develop
 	}
 	return nullptr;
 }
@@ -52,6 +70,7 @@ Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HT
 	} else if (method == HTTPRequest::HTTP_DELETE) {
 		result = DeleteMethodHandlers(uri);
 	}
+
 	if (result == nullptr) {
 		return new Error(Poco::Net::HTTPResponse::HTTP_BAD_REQUEST, "Wrong endpoint " + uri);
 	}
