@@ -1,11 +1,47 @@
+#include "Poco/Data/SQLite/Connector.h"
+#include "Poco/Data/Session.h"
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
+#include <bitset>
 #include <handlers.hpp>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <vector>
 
 namespace handlers {
+
+using namespace Poco::Data::Keywords;
+
+class SQLConnection {
+public:
+	static SQLConnection *getInstance();
+	Poco::Data::Session *getSession();
+
+private:
+	SQLConnection();
+	~SQLConnection();
+	Poco::Data::Session *m_ptr_session;
+	static SQLConnection *m_ptr_instance;
+};
+
+SQLConnection::SQLConnection() {
+	Poco::Data::Session session("SQLite", "sample.db");
+	m_ptr_session = &session;
+}
+
+SQLConnection *SQLConnection::getInstance() {
+	if (!m_ptr_instance) {
+		m_ptr_instance = new SQLConnection();
+	}
+	return m_ptr_instance;
+}
+
+Poco::Data::Session *SQLConnection::getSession() {
+	return m_ptr_session;
+}
+
+SQLConnection *SQLConnection::m_ptr_instance = NULL;
 
 struct Meeting {
 	std::optional<int> id;
@@ -48,6 +84,19 @@ public:
 class StorageStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
+		SQLConnection *connection = SQLConnection::getInstance();
+		Poco::Data::Session session(*connection->getSession());
+		Poco::Data::Statement select(session); //Nullptr err
+
+		//session << "DROP TABLE IF EXISTS meeting", now;
+		/*session << R"(CREATE TABLE IF NOT EXISTS meeting(
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT UNIQUE NOT NULL,
+		description TEXT NOT NULL,
+		address TEXT NOT NULL,
+		published INTEGER NOT NULL))",
+	    now;
+*/
 		if (meeting.id.has_value()) {
 			m_meetings[meeting.id.value()] = meeting;
 		} else {
@@ -58,7 +107,7 @@ public:
 	}
 
 	Storage::MeetingList GetList() override {
-		DataBase::MeetingList list;
+		Storage::MeetingList list;
 		for (auto [id, meeting] : m_meetings) {
 			list.push_back(meeting);
 		}
@@ -96,7 +145,7 @@ Storage &GetStorage() {
 }
 
 void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	auto &storage = GetDataBase();
+	auto &storage = GetStorage();
 	nlohmann::json result = nlohmann::json::array();
 	for (auto meeting : storage.GetList()) {
 		result.push_back(meeting);
@@ -106,7 +155,7 @@ void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, P
 }
 
 void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	auto &storage = GetDataBase();
+	auto &storage = GetStorage();
 	try {
 		Meeting new_meeting = nlohmann::json::parse(request.stream());
 		storage.Save(new_meeting);
@@ -121,7 +170,7 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 }
 
 void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	auto &meetings = GetDataBase();
+	auto &meetings = GetStorage();
 	auto meeting = meetings.Get(m_id);
 	if (meeting.has_value()) {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "Details of meeting");
@@ -134,7 +183,7 @@ void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, P
 
 void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK);
-	auto &meetings = GetDataBase();
+	auto &meetings = GetStorage();
 	auto meeting = meetings.Get(m_id);
 	if (meeting.has_value()) {
 		try {
@@ -153,7 +202,7 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 }
 
 void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	auto &meetings = GetDataBase();
+	auto &meetings = GetStorage();
 	if (meetings.Delete(m_id)) {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT, "Meeting delete");
 	} else {
