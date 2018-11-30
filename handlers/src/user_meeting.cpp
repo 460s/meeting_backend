@@ -1,3 +1,5 @@
+#include "Poco/Data/SQLite/Connector.h"
+#include "Poco/Data/Session.h"
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <bitset>
@@ -10,6 +12,36 @@
 namespace handlers {
 
 using namespace Poco::Data::Keywords;
+
+class SQLConnection {
+public:
+	static SQLConnection *getInstance();
+	Poco::Data::Session *getSession();
+
+private:
+	SQLConnection();
+	~SQLConnection();
+	Poco::Data::Session *m_ptr_session;
+	static SQLConnection *m_ptr_instance;
+};
+
+SQLConnection::SQLConnection() {
+	Poco::Data::Session session("SQLite", "sample.db");
+	m_ptr_session = &session;
+}
+
+SQLConnection *SQLConnection::getInstance() {
+	if (!m_ptr_instance) {
+		m_ptr_instance = new SQLConnection();
+	}
+	return m_ptr_instance;
+}
+
+Poco::Data::Session *SQLConnection::getSession() {
+	return m_ptr_session;
+}
+
+SQLConnection *SQLConnection::m_ptr_instance = NULL;
 
 struct Meeting {
 	std::optional<int> id;
@@ -52,7 +84,19 @@ public:
 class StorageStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
+		SQLConnection *connection = SQLConnection::getInstance();
+		Poco::Data::Session session(*connection->getSession());
+		Poco::Data::Statement select(session); //Nullptr err
 
+		//session << "DROP TABLE IF EXISTS meeting", now;
+		/*session << R"(CREATE TABLE IF NOT EXISTS meeting(
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT UNIQUE NOT NULL,
+		description TEXT NOT NULL,
+		address TEXT NOT NULL,
+		published INTEGER NOT NULL))",
+	    now;
+*/
 		if (meeting.id.has_value()) {
 			m_meetings[meeting.id.value()] = meeting;
 		} else {
