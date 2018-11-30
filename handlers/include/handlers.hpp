@@ -18,13 +18,6 @@ class RestHandler : public Poco::Net::HTTPRequestHandler {
 	virtual void HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) = 0;
 };
 
-<<<<<<< HEAD
-#define REGISTER_HANDLER(name)                                                                                       \
-	class name : public Poco::Net::HTTPRequestHandler {                                                              \
-	private:                                                                                                         \
-		void handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) override; \
-	}
-=======
 #define REGISTER_HANDLER(name) \
     class name : public RestHandler { \
     void HandleRestRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override; \
@@ -38,23 +31,13 @@ class RestHandler : public Poco::Net::HTTPRequestHandler {
     private: \
       int m_id; \
 }
->>>>>>> upstream/develop
 
 namespace handlers {
-
-REGISTER_HANDLER(UserMeeting);
 
 REGISTER_HANDLER(UserMeetingList);
 
 REGISTER_HANDLER(UserMeetingCreate);
 
-<<<<<<< HEAD
-REGISTER_HANDLER(UserMeetingChange);
-
-REGISTER_HANDLER(UserMeetingDelete);
-
-} // namespace handlers
-=======
 REGISTER_HANDLER_WITH_ID(UserMeetingRead);
 
 REGISTER_HANDLER_WITH_ID(UserMeetingUpdate);
@@ -62,4 +45,3 @@ REGISTER_HANDLER_WITH_ID(UserMeetingUpdate);
 REGISTER_HANDLER_WITH_ID(UserMeetingDelete);
 
 }
->>>>>>> upstream/develop
