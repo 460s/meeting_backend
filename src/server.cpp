@@ -1,3 +1,5 @@
+#include "Poco/Data/SQLite/Connector.h"
+#include "Poco/Data/Session.h"
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/ServerSocketImpl.h>
 #include <handlers/factory.hpp>
@@ -5,7 +7,9 @@
 #include <server.hpp>
 
 namespace {
-
+using namespace Poco::Data::Keywords;
+using Poco::Data::Session;
+using Poco::Data::Statement;
 using Poco::Net::Socket;
 
 class ServerSocketImpl : public Poco::Net::ServerSocketImpl {
@@ -37,6 +41,29 @@ int Server::main(const std::vector<std::string> & /*args*/) {
 	const Poco::Net::ServerSocket socket(ServerSocket("127.0.0.1", 8080));
 
 	Poco::Net::HTTPServer server(new handlers::Factory(), socket, parameters);
+
+
+	// if (std::find(args.begin(), args.end(), "init-db") != args.end()) {
+	// register SQLite connector
+	Poco::Data::SQLite::Connector::registerConnector();
+
+	// create a session
+	Session session("SQLite", "sample.db");
+
+	// drop sample table, if it exists
+	session << "DROP TABLE IF EXISTS meeting", now;
+
+	// (re)create table
+	session << R"(CREATE TABLE meeting (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT UNIQUE NOT NULL,
+			description TEXT NOT NULL,
+			address TEXT NOT NULL,
+			published INTEGER NOT NULL
+		);)",
+	    now;
+	// }
+
 
 	server.start();
 	waitForTerminationRequest();
