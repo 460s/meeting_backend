@@ -1,3 +1,5 @@
+#include "Poco/Data/Session.h"
+#include "Poco/Data/SQLite/Connector.h"
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <handlers.hpp>
@@ -5,15 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 
-#include "Poco/Data/Session.h"
-#include "Poco/Data/SQLite/Connector.h"
-
-using namespace Poco::Data::Keywords;
-using Poco::Data::Session;
-using Poco::Data::Statement;
-
 namespace handlers {
-
 
 struct Meeting {
 	std::optional<int> id;
@@ -23,6 +17,9 @@ struct Meeting {
 	bool published;
 };
 
+using namespace Poco::Data::Keywords;
+using Poco::Data::Session;
+using Poco::Data::Statement;
 using nlohmann::json;
 
 // сериализация (маршалинг)
