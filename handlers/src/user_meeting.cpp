@@ -1,191 +1,234 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <handlers.hpp>
+#include <server.hpp>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include <sstream>
+#include <optional>
+#include <db_handler.hpp>
 
 namespace handlers {
+    using namespace Poco::Data::Keywords;
 
-struct Meeting {
-	int id;
-	std::string name;
-	std::string description;
-	std::string address;
-	std::string signup_description;
-	int signup_from_date;
-	int signup_to_date;
-	int from_date;
-	int to_date;
-	bool published;
-};
+    struct Meeting {
+        std::optional<int> id;
+        std::string name;
+        std::string description;
+        std::string address;
+        bool published;
+    };
 
-using nlohmann::json;
+    using nlohmann::json;
 
 // сериализация (маршалинг)
-void to_json(json &j, const Meeting &m) {
-	j = json{
-	    {"id", m.id},
-	    {"name", m.name},
-	    {"description", m.description},
-	    {"address", m.address},
-	    {"signup_description", m.signup_description},
-	    {"signup_from_date", m.signup_from_date},
-	    {"signup_to_date", m.signup_to_date},
-	    {"from_date", m.from_date},
-	    {"to_date", m.to_date},
-	    {"published", m.published}};
-}
+    void to_json(json &j, const Meeting &m) {
+        j = json{
+                {"id", m.id.value()},
+                {"name", m.name},
+                {"description", m.description},
+                {"address",     m.address},
+                {"published", m.published}};
+    }
 
 // десериализация (анмаршалинг, распаковка)
-void from_json(const json &j, Meeting &m) {
-	j.at("name").get_to(m.name);
-	j.at("description").get_to(m.description);
-	j.at("address").get_to(m.address);
-	j.at("signup_description").get_to(m.signup_description);
-	j.at("signup_from_date").get_to(m.signup_from_date);
-	j.at("signup_to_date").get_to(m.signup_to_date);
-	j.at("from_date").get_to(m.from_date);
-	j.at("to_date").get_to(m.to_date);
-	j.at("published").get_to(m.published);
-}
+    void from_json(const json &j, Meeting &m) {
+        j.at("name").get_to(m.name);
+        j.at("description").get_to(m.description);
+        j.at("address").get_to(m.address);
+        j.at("published").get_to(m.published);
+    }
 
-class Storage {
-public:
-	using MeetingList = std::vector<Meeting>;
-	virtual void Save(Meeting &meeting) = 0;
-	virtual void Delete(int id) = 0;
-	virtual bool Exist(int meeting_id) = 0;
-	virtual void Update(int id, Meeting &meeting) = 0;
-	virtual MeetingList GetList() = 0;
-	virtual ~Storage() {}
-};
+    class Storage {
+    public:
+        static Poco::Data::Session &Session();
+        using MeetingList = std::vector<Meeting>;
+        virtual Poco::Net::HTTPServerResponse::HTTPStatus Save(Meeting &meeting) = 0;
+        virtual MeetingList GetList() = 0;
+        virtual std::optional<Meeting> Get(int id) = 0;
+        virtual bool Delete(int id) = 0;
+        virtual ~Storage() {}
+    };
 
-class MapStorage : public Storage {
-public:
-	void Save(Meeting &meeting) override {
-		int id = m_meetings.size();
-		meeting.id = id;
-		m_meetings[id] = meeting;
-	}
-	Storage::MeetingList GetList() override {
-		Storage::MeetingList list;
-		for (auto [id, meeting] : m_meetings) {
-			list.push_back(meeting);
-		}
-		return list;
-	}
-	void Delete(int id) override {
-		auto meeting = m_meetings.find(id);
-		m_meetings.erase(meeting);
-	}
-	bool Exist(int meeting_id) override {
-		auto meeting = m_meetings.find(meeting_id);
-		if (meeting != m_meetings.end()) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-	void Update(int id, Meeting &meeting) override {
-		meeting.id = id;
-		m_meetings[id] = meeting;
-	}
+    Poco::Data::Session &Storage::Session() {
+        static Poco::Data::Session session("SQLite", "sample.db");
+        return session;
+    }
 
-private:
-	using MeetingMap = std::map<int, Meeting>;
-	MeetingMap m_meetings;
-};
+    class DBStorage : public Storage {
+    public:
+        Poco::Net::HTTPServerResponse::HTTPStatus Save(Meeting &meeting) override {
+            auto &session = Session();
+            if (meeting.id.has_value()) {
+                if (IsNameQnique(meeting.name)) {
+                    Poco::Data::Statement update(session);
+                    update << "UPDATE meeting SET name = ?, description = ?, address = ?, published = ? WHERE id = ?",
+                            use(meeting.name),
+                            use(meeting.description),
+                            use(meeting.address),
+                            use(meeting.published),
+                            use(meeting.id.value());
+                    update.execute();
+                    return Poco::Net::HTTPServerResponse::HTTP_OK;
+                } else {
+                    return Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST;
+                }
 
-Storage &GetStorage() {
-	static MapStorage storage;
-	return storage;
-}
+            } else {
+                if (IsNameQnique(meeting.name)) {
+                    Poco::Data::Statement insert(session);
+                    insert << "INSERT INTO meeting (name, description, address, published) VALUES(?, ?, ?, ?)",
+                            use(meeting.name),
+                            use(meeting.description),
+                            use(meeting.address),
+                            use(meeting.published);
+                    insert.execute();
+                    return Poco::Net::HTTPServerResponse::HTTP_OK;
+                } else {
+                    return Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST;
+                }
+            }
+            return Poco::Net::HTTPServerResponse::HTTP_OK;
+        }
+        Storage::MeetingList GetList() override {
+            Storage::MeetingList list;
+            auto &session = Session();
+            int meeting_id;
+            Poco::Data::Statement select(session);
+            Meeting meeting;
+            select << "SELECT id, name, description, address, published FROM meeting",
+                    into(meeting_id),
+                    into(meeting.name),
+                    into(meeting.description),
+                    into(meeting.address),
+                    into(meeting.published),
+                    range(0, 1);
 
-std::vector<std::string> split(const std::string &str_to_split, char delimeter) {
-	std::stringstream string_stream(str_to_split);
-	std::string item;
-	std::vector<std::string> splited_strings;
-	while (std::getline(string_stream, item, delimeter)) {
-		splited_strings.push_back(item);
-	}
-	return splited_strings;
-}
+            while (!select.done()) {
+                select.execute();
+                meeting.id = meeting_id;
+                list.push_back(meeting);
+            }
+            return list;
+        }
+        std::optional<Meeting> Get(int id) override {
+            if (MeetingExist(id)) {
+                Meeting meeting;
+                auto &session = Session();
+                Poco::Data::Statement select(session);
+                select << "SELECT name, description, address, published FROM meeting WHERE id = ?",
+                        into(meeting.name),
+                        into(meeting.description),
+                        into(meeting.address),
+                        into(meeting.published),
+                        use(id);
+                select.execute();
+                meeting.id = id;
+                return meeting;
+            }
+            return std::optional<Meeting>();
+        }
+        bool Delete(int id) override {
+            if (MeetingExist(id)) {
+                auto &session = Session();
+                Poco::Data::Statement deleteMeeting(session);
+                deleteMeeting << "DELETE FROM meeting WHERE id = ?",
+                        use(id);
+                deleteMeeting.execute();
+                return true;
+            }
+            return false;
+        }
 
-void UserMeetingList::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
-	auto &storage = GetStorage();
-	nlohmann::json result = nlohmann::json::array();
-	for (auto meeting : storage.GetList()) {
-		result.push_back(meeting);
-	}
-	response.send() << result;
-}
+    private:
+        bool MeetingExist(int id) const {
+            auto &session = Session();
+            Poco::Data::Statement find(session);
+            int meeting_count = 0;
+            find << "SELECT COUNT(id) FROM meeting WHERE id = ?",
+                    into(meeting_count),
+                    use(id);
+            find.execute();
+            return meeting_count != 0;
+        }
 
-void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	auto &storage = GetStorage();
-	try {
-		nlohmann::json j = nlohmann::json::parse(request.stream());
-		Meeting meeting = j;
-		storage.Save(meeting);
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_CREATED);
-		response.send() << json(meeting);
-	} catch (std::exception &e) {
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
-		response.send();
-	}
-}
+        bool IsNameQnique(std::string meeting_name) const {
+            auto &session = Session();
+            Poco::Data::Statement find(session);
+            int meeting_count = 0;
+            find << "SELECT COUNT(id) FROM meeting WHERE name = ?",
+                    into(meeting_count),
+                    use(meeting_name);
+            find.execute();
+            return meeting_count == 0;
+        }
+    };
 
-void UserMeetingDelete::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	auto &storage = GetStorage();
-	int meeting_id = std::stoi(split(request.getURI(), '/')[3]);
-	if (storage.Exist(meeting_id)) {
-		storage.Delete(meeting_id);
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT);
-	} else {
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
-	}
-	response.send();
-}
+    Storage &GetStorage() {
+        static DBStorage storage;
+        return storage;
+    }
 
-void UserMeetingPatch::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	auto &storage = GetStorage();
-	int meeting_id = std::stoi(split(request.getURI(), '/')[3]);
-	if (storage.Exist(meeting_id)) {
-		try {
-			Meeting meeting = nlohmann::json::parse(request.stream());
-			storage.Update(meeting_id, meeting);
-			response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
-			response.send() << json(meeting);
-		} catch (...) {
-			response.setStatus(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
-			response.send();
-		}
-	} else {
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_FORBIDDEN);
-		response.send();
-	}
-}
 
-void UserMeeting::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	auto &storage = GetStorage();
-	int meeting_id = std::stoi(split(request.getURI(), '/')[3]);
-	//std::vector<Meeting> meetings = GetStorage().GetList();
-	Meeting searching_meeting;
+    void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+        response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
+        auto &storage = GetStorage();
+        nlohmann::json result = nlohmann::json::array();
+        for (auto meeting : storage.GetList()) {
+            result.push_back(meeting);
+        }
+        response.send() << result;
+        auto &session = DBHandler::Session();
+    }
 
-	if (storage.Exist(meeting_id)) {
-		for (auto meeting : storage.GetList()) {
-			if (meeting.id == meeting_id)
-				searching_meeting = meeting;
-		}
+    void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+        nlohmann::json j = nlohmann::json::parse(request.stream());
+        auto &storage = GetStorage();
+        Meeting meeting = j;
+        Poco::Net::HTTPServerResponse::HTTPStatus status = storage.Save(meeting);
+        response.setStatusAndReason(status);
+        if (status == Poco::Net::HTTPServerResponse::HTTP_OK) {
+            response.send() << json(meeting);
+        }
+        response.send();
 
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
-		response.send() << json(searching_meeting);
+    }
 
-	} else {
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
-		response.send();
-	}
-}
+    void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+        //response.setContentType("application/json");
+        auto &meetings = GetStorage();
+        auto meeting = meetings.Get(m_id);
+        if (meeting.has_value()) {
+            response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK);
+            response.send() << json(meeting.value());
+        }
+
+        response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
+        response.send();
+    }
+
+    void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+        auto body = nlohmann::json::parse(request.stream());
+        auto &meetings = GetStorage();
+        Meeting meeting = body;
+        meeting.id = m_id;
+
+        Poco::Net::HTTPServerResponse::HTTPStatus status = meetings.Save(meeting);
+        response.setStatusAndReason(status);
+        if (status == Poco::Net::HTTPServerResponse::HTTP_OK) {
+            response.send() << json(meeting);
+        }
+        response.send();
+
+    }
+
+    void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+        auto &meetings = GetStorage();
+        if (meetings.Delete(m_id)) {
+            response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT);
+        } else {
+            response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
+        }
+        response.send();
+    }
 
 } // namespace handlers
