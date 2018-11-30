@@ -3,6 +3,7 @@
 #include <handlers/error.hpp>
 #include <handlers/factory.hpp>
 #include <regex>
+#include <iostream>
 
 namespace handlers {
 
@@ -17,6 +18,7 @@ HTTPRequestHandler *Factory::GetMethodHandlers(const std::string &uri) const {
 
 HTTPRequestHandler *Factory::PostMethodHandlers(const std::string &uri) const {
 	if (uri == "/user/meeting") {
+		std::cout << "PostMethodHandlers" << std::endl;
 		return new UserMeetingCreate();
 	}
 	return nullptr;
