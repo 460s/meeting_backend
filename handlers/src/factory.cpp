@@ -38,7 +38,6 @@ HTTPRequestHandler *Factory::DeleteMethodHandlers(const std::string &uri) const 
 
 Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HTTPServerRequest &request) {
 	using Poco::Net::HTTPRequest;
-	//Poco::Data::Session s1(m_pool.get());
 
 	Poco::Net::HTTPRequestHandler *result = nullptr;
 	const auto method = request.getMethod();
