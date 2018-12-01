@@ -1,8 +1,11 @@
+#include <Poco/Data/SQLite/Connector.h>
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/ServerSocketImpl.h>
+
 #include <handlers/factory.hpp>
-#include <iostream>
 #include <server.hpp>
+
+#include <iostream>
 
 namespace {
 
@@ -35,6 +38,8 @@ int Server::main(const std::vector<std::string> & /*args*/) {
 	parameters->setMaxThreads(1);
 
 	const Poco::Net::ServerSocket socket(ServerSocket("127.0.0.1", 8080));
+
+	Poco::Data::SQLite::Connector::registerConnector();
 
 	Poco::Net::HTTPServer server(new handlers::Factory(), socket, parameters);
 

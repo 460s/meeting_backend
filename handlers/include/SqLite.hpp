@@ -5,9 +5,9 @@
 
 using namespace Poco::Data::Keywords;
 
-class Session {
+class SqLite {
 public:
-	static Session *getInstance();
+	static SqLite *getInstance();
 	std::shared_ptr<Poco::Data::Session> getSession();
 
 	void Save(handlers::Meeting &meeting);
@@ -16,13 +16,13 @@ public:
 	void Delete(int id);
 	bool Contain(int id);
 
-	Session(Session const &) = delete;
-	void operator=(Session const &) = delete;
-	
-	~Session();
+	SqLite(SqLite const &) = delete;
+	void operator=(SqLite const &) = delete;
+
+	~SqLite();
 
 private:
-	Session();
+	SqLite();
 	std::shared_ptr<Poco::Data::Session> m_session;
-	static Session *m_instance;
+	static SqLite *m_instance;
 };

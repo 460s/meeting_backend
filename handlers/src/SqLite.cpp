@@ -1,15 +1,28 @@
-#include <Poco/Data/SQLite/Connector.h>
 #include <Poco/Data/Session.h>
 
 #include <Meeting.hpp>
-#include <Session.hpp>
+#include <SqLite.hpp>
 
 using namespace Poco::Data::Keywords;
 
-struct UniqueSession {
-	std::unique_ptr<Poco::Data::Session> unique_session;
-	UniqueSession() : unique_session(new Poco::Data::Session("SQLite", "sample.db")) {
-		Poco::Data::Session session = *unique_session.get();
+struct SingleSession {
+	std::unique_ptr<Poco::Data::Session> single_session;
+	SingleSession() : single_session(new Poco::Data::Session("SQLite", "sample.db")) {
+	}
+};
+
+SqLite *SqLite::m_instance = NULL;
+
+SqLite::SqLite() {
+	std::shared_ptr<SingleSession> unique_session(std::make_shared<SingleSession>());
+	std::shared_ptr<Poco::Data::Session> session(unique_session, unique_session->single_session.get());
+	m_session.swap(session);
+}
+
+SqLite *SqLite::getInstance() {
+	if (!m_instance) {
+		m_instance = new SqLite();
+		Poco::Data::Session session = *m_instance->getSession();
 		session << R"(CREATE TABLE IF NOT EXISTS meeting(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT UNIQUE NOT NULL,
@@ -18,29 +31,14 @@ struct UniqueSession {
 			published INTEGER NOT NULL))",
 			now;
 	}
-};
-
-Session *Session::m_instance = NULL;
-
-Session::Session() {
-	Poco::Data::SQLite::Connector::registerConnector();
-	std::shared_ptr<UniqueSession> session(std::make_shared<UniqueSession>());
-	std::shared_ptr<Poco::Data::Session> poco_session(session, session->unique_session.get());
-	m_session.swap(poco_session);
-}
-
-Session *Session::getInstance() {
-	if (!m_instance) {
-		m_instance = new Session();
-	}
 	return m_instance;
 }
 
-std::shared_ptr<Poco::Data::Session> Session::getSession() {
+std::shared_ptr<Poco::Data::Session> SqLite::getSession() {
 	return m_session;
 }
 
-bool Session::Contain(int id) {
+bool SqLite::Contain(int id) {
 	Poco::Data::Session session = *m_instance->getSession();
 	Poco::Nullable<std::string> name;
 	session << "SELECT name FROM meeting WHERE id = ?",
@@ -50,7 +48,7 @@ bool Session::Contain(int id) {
 	return !name.isNull();
 }
 
-void Session::Save(handlers::Meeting &meeting) {
+void SqLite::Save(handlers::Meeting &meeting) {
 	if (meeting.name == "" || meeting.description == "" || meeting.address == "") {
 		throw std::exception();
 	}
@@ -81,7 +79,7 @@ void Session::Save(handlers::Meeting &meeting) {
 	}
 }
 
-handlers::Meeting Session::Get(int id) {
+handlers::Meeting SqLite::Get(int id) {
 	Poco::Data::Session session = *m_instance->getSession();
 	handlers::Meeting meeting;
 	int temporary_id = 0;
@@ -98,7 +96,7 @@ handlers::Meeting Session::Get(int id) {
 	return meeting;
 }
 
-std::vector<handlers::Meeting> Session::GetList() {
+std::vector<handlers::Meeting> SqLite::GetList() {
 	Poco::Data::Session session = *m_instance->getSession();
 	std::vector<handlers::Meeting> list;
 	handlers::Meeting meeting;
@@ -121,7 +119,7 @@ std::vector<handlers::Meeting> Session::GetList() {
 	return list;
 }
 
-void Session::Delete(int id) {
+void SqLite::Delete(int id) {
 	Poco::Data::Session session = *m_instance->getSession();
 	session << "DELETE FROM meeting WHERE id = ?", use(id), now;
 }

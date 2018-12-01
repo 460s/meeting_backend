@@ -3,8 +3,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <SqLite.hpp>
 #include <Meeting.hpp>
-#include <Session.hpp>
 #include <handlers.hpp>
 
 namespace handlers {
@@ -26,9 +26,9 @@ void from_json(const nlohmann::json &j, Meeting &m) {
 }
 
 void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	Session *session = Session::getInstance();
+	SqLite *data_base = SqLite::getInstance();
 	nlohmann::json result = nlohmann::json::array();
-	for (auto meeting : session->GetList()) {
+	for (auto meeting : data_base->GetList()) {
 		result.push_back(meeting);
 	}
 	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "List of meetings was received");
@@ -36,10 +36,10 @@ void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, P
 }
 
 void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	Session *session = Session::getInstance();
+	SqLite *data_base = SqLite::getInstance();
 	try {
 		Meeting new_meeting = nlohmann::json::parse(request.stream());
-		session->Save(new_meeting);
+		data_base->Save(new_meeting);
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_CREATED, "Meeting was created");
 		response.send() << nlohmann::json(new_meeting);
 	} catch (const std::exception &errc) {
@@ -49,9 +49,9 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 }
 
 void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	Session *session = Session::getInstance();
-	if (session->Contain(m_id)) {
-		Meeting meeting = session->Get(m_id);
+	SqLite *data_base = SqLite::getInstance();
+	if (data_base->Contain(m_id)) {
+		Meeting meeting = data_base->Get(m_id);
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "Details of meeting");
 		response.send() << nlohmann::json(meeting);
 	} else {
@@ -61,12 +61,13 @@ void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, P
 }
 
 void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	Session *session = Session::getInstance();
-	if (session->Contain(m_id)) {
+	SqLite *data_base = SqLite::getInstance();
+	if (data_base->Contain(m_id)) {
 		try {
 			Meeting new_meeting = nlohmann::json::parse(request.stream());
 			new_meeting.id = m_id;
-			session->Save(new_meeting);
+			data_base->Save(new_meeting);
+			response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "Details of meeting");
 			response.send() << nlohmann::json(new_meeting);
 		} catch (const std::exception &err) {
 			response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST, "Errors in meeting parameters");
@@ -79,9 +80,9 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 }
 
 void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	Session *session = Session::getInstance();
-	if (session->Contain(m_id)) {
-		session->Delete(m_id);
+	SqLite *data_base = SqLite::getInstance();
+	if (data_base->Contain(m_id)) {
+		data_base->Delete(m_id);
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT, "Meeting delete");
 	} else {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND, "Meeting not found");
