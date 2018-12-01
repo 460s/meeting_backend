@@ -28,7 +28,7 @@ void from_json(const nlohmann::json &j, Meeting &m) {
 void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	SqLite *data_base = SqLite::getInstance();
 	nlohmann::json result = nlohmann::json::array();
-	for (auto meeting : data_base->GetList()) {
+	for (const auto& meeting : data_base->GetList()) {
 		result.push_back(meeting);
 	}
 	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK, "List of meetings was received");
