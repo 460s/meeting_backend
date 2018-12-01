@@ -107,7 +107,7 @@ void console_log(std::string message){
 	std::cout << message << std::endl;
 }
 
-void UserMeetingList::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 	auto &storage = GetStorage();
 	nlohmann::json result = nlohmann::json::array();
@@ -118,22 +118,15 @@ void UserMeetingList::handleRequest(Poco::Net::HTTPServerRequest &request, Poco:
 
 }
 
-void UserMeetingGet::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingGet::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 
 	auto &storage = GetStorage();
 
-	// Получем id
-	const auto uri = request.getURI();
-	Poco::URI uri_parser(uri);
-	std::vector < std::string > segments;
-	uri_parser.getPathSegments(segments);
-	int id = std::stoi(segments[2]);
-
-	if (storage.Exists(id)) {
+	if (storage.Exists(m_id)) {
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
-		response.send() << json(storage.Get(id));
+		response.send() << json(storage.Get(m_id));
 	} else {
-		console_log("Trying to get meeting #"+std::to_string(id)+":");
+		console_log("Trying to get meeting #"+std::to_string(m_id)+":");
 		console_log("Not found.");
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 		response.send();
@@ -141,7 +134,7 @@ void UserMeetingGet::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::
 
 }
 
-void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	
 	nlohmann::json j = nlohmann::json::parse(request.stream());
 	auto &storage = GetStorage();
@@ -162,26 +155,19 @@ void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poc
 	}
 }
 
-void UserMeetingUpdate::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	nlohmann::json j = nlohmann::json::parse(request.stream());
 	auto &storage = GetStorage();
 	Meeting meeting;
 
-	// Получем id
-	const auto uri = request.getURI();
-	Poco::URI uri_parser(uri);
-	std::vector < std::string > segments;
-	uri_parser.getPathSegments(segments);
-	int id = std::stoi(segments[2]);
-
-	if (storage.Exists(id)) {
+	if (storage.Exists(m_id)) {
 		//"Грубо" ловим ошибку, если нам прислали не те данные (нехватает поля, не тот тип поля и т.д.)
 		try {
 			Meeting meeting = j;
-			storage.Update(meeting, id);
+			storage.Update(meeting, m_id);
 			response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 			response.send() << json(meeting);
-			console_log("Updated  meeting #"+std::to_string(id)+":");
+			console_log("Updated  meeting #"+std::to_string(m_id)+":");
 			console_log(j.dump());
 		} catch(...) {
 			console_log("Trying to update meeting. Validation error");
@@ -191,7 +177,7 @@ void UserMeetingUpdate::handleRequest(Poco::Net::HTTPServerRequest &request, Poc
 			return;
 		}
 	} else {
-		console_log("Trying to update meeting #"+std::to_string(id)+":");
+		console_log("Trying to update meeting #"+std::to_string(m_id)+":");
 		console_log("Not found.");
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 		response.send();
@@ -200,24 +186,17 @@ void UserMeetingUpdate::handleRequest(Poco::Net::HTTPServerRequest &request, Poc
 }
 
 
-void UserMeetingDelete::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 
 	auto &storage = GetStorage();
 
-	// Получем id
-	const auto uri = request.getURI();
-	Poco::URI uri_parser(uri);
-	std::vector < std::string > segments;
-	uri_parser.getPathSegments(segments);
-	int id = std::stoi(segments[2]);
-
-	if (storage.Exists(id)) {
-		storage.Delete(id);
+	if (storage.Exists(m_id)) {
+		storage.Delete(m_id);
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT);
 		response.send();
-		console_log("Deleted  meeting #"+std::to_string(id));
+		console_log("Deleted  meeting #"+std::to_string(m_id));
 	} else {
-		console_log("Trying to delete meeting #"+std::to_string(id)+":");
+		console_log("Trying to delete meeting #"+std::to_string(m_id)+":");
 		console_log("Not found.");
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 		response.send();
