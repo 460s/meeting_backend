@@ -1,22 +1,16 @@
 #include <Poco/Data/Session.h>
 
-#include <Meeting.hpp>
-#include <SqLite.hpp>
+#include <meeting.hpp>
+#include <sqLite.hpp>
+
+#include <string>
 
 using namespace Poco::Data::Keywords;
 
-struct SingleSession {
-	std::unique_ptr<Poco::Data::Session> single_session;
-	SingleSession() : single_session(new Poco::Data::Session("SQLite", "sample.db")) {
-	}
-};
-
-SqLite *SqLite::m_instance = NULL;
+SqLite *SqLite::m_instance = nullptr;
 
 SqLite::SqLite() {
-	std::shared_ptr<SingleSession> unique_session(std::make_shared<SingleSession>());
-	std::shared_ptr<Poco::Data::Session> session(unique_session, unique_session->single_session.get());
-	m_session.swap(session);
+	m_session = std::make_shared<Poco::Data::Session>("SQLite", "sample.db");
 }
 
 SqLite *SqLite::getInstance() {
@@ -49,8 +43,8 @@ bool SqLite::Contain(int id) {
 }
 
 void SqLite::Save(handlers::Meeting &meeting) {
-	if (meeting.name == "" || meeting.description == "" || meeting.address == "") {
-		throw std::exception();
+	if ( meeting.name.empty() || meeting.description.empty() || meeting.address.empty() ) {
+		throw std::runtime_error("error in meeting parametrs");
 	}
 	Poco::Data::Session session = *m_instance->getSession();
 	if (meeting.id.has_value()) {
@@ -82,17 +76,15 @@ void SqLite::Save(handlers::Meeting &meeting) {
 handlers::Meeting SqLite::Get(int id) {
 	Poco::Data::Session session = *m_instance->getSession();
 	handlers::Meeting meeting;
-	int temporary_id = 0;
-	session << "SELECT id, name, description, address, published --\n\
+	session << "SELECT name, description, address, published --\n\
 		FROM meeting WHERE id = ?",
-		into(temporary_id),
 		into(meeting.name),
 		into(meeting.description),
 		into(meeting.address),
 		into(meeting.published),
 		use(id),
 		now;
-	meeting.id = temporary_id;
+	meeting.id = id;
 	return meeting;
 }
 

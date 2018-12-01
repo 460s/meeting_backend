@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Meeting.hpp>
+#include <meeting.hpp>
 #include <Poco/Data/Session.h>
 
 using namespace Poco::Data::Keywords;

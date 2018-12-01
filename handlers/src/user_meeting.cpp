@@ -3,8 +3,8 @@
 
 #include <nlohmann/json.hpp>
 
-#include <SqLite.hpp>
-#include <Meeting.hpp>
+#include <sqLite.hpp>
+#include <meeting.hpp>
 #include <handlers.hpp>
 
 namespace handlers {
