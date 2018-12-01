@@ -22,6 +22,9 @@ using Poco::Data::Session;
 using Poco::Data::Statement;
 using nlohmann::json;
 
+constexpr char sessionType[] = "SQLite";
+constexpr char path[] = "sample.db";
+
 // сериализация (маршалинг)
 void to_json(json &j, const Meeting &m) {
 	j = json{
@@ -53,7 +56,7 @@ public:
 class MapStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
-		Session session("SQLite", "sample.db");
+		Session session(sessionType, path);
 		if (meeting.id.has_value()) {
 			Statement update(session);
 			update << "UPDATE meeting SET Name = ?, Description = ?, Address = ?, Published = ? WHERE id = ?",
@@ -77,7 +80,7 @@ public:
 		Storage::MeetingList list;
 		Meeting meeting;
 		int id = 0;
-		Session session("SQLite", "sample.db");
+		Session session(sessionType, path);
 		Statement select(session);
 		select << "SELECT id, Name, Description, Address, Published FROM meeting",
 			into(id),
@@ -97,7 +100,7 @@ public:
 	std::optional<Meeting> Get(int id) override {
 		if (HasMeeting(id)) {
 			Meeting meeting;
-			Session session("SQLite", "sample.db");
+			Session session(sessionType, path);
 			Statement select(session);
 			select << "SELECT Name, Description, Address, Published FROM meeting WHERE id = ?",
 				into(meeting.name),
@@ -109,11 +112,11 @@ public:
 			meeting.id = id;
 			return meeting;
 		}
-		return std::optional<Meeting>();
+		return std::nullopt;
 	}
 	bool Delete(int id) override {
 		if (HasMeeting(id)) {
-			Session session("SQLite", "sample.db");
+			Session session(sessionType, path);
 			Statement deleteMeeting(session);
 			deleteMeeting << "DELETE FROM meeting WHERE id = ?",
 				use(id);
@@ -125,10 +128,10 @@ public:
 
 private:
 	bool HasMeeting(int id) const {
-		Session session("SQLite", "sample.db");
+		Session session(sessionType, path);
 		Statement find(session);
 		int count = 0;
-		find << "SELECT Count(id) FROM meeting WHERE id = ? LIMIT 1",
+		find << "SELECT Count(*) FROM meeting WHERE id = ? LIMIT 1",
 			into(count),
 			use(id);
 		find.execute();
@@ -168,6 +171,7 @@ void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, P
 	if (meeting.has_value()) {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK);
 		response.send() << json(meeting.value()) << std::endl;
+		return;
 	}
 	
 	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
