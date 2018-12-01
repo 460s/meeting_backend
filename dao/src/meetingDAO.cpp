@@ -26,7 +26,7 @@ IDAO::MeetingList dao::MeetingDAO::GetList() {
     IDAO::MeetingList list;
     auto session = SqliteSessionFactory::getInstance();
     MeetingTuple mp;
-    int id;
+    int id = 0;
 
     Poco::Data::Statement select(session);
     select << "SELECT id, name, description, address, published FROM meeting",
@@ -69,7 +69,7 @@ bool dao::MeetingDAO::Delete(int id) {
 }
 
 bool dao::MeetingDAO::HasEntity(int id, Poco::Data::Session &session) {
-    bool has_meeting;
+    bool has_meeting = false;
     session << "SELECT COUNT(*) FROM meeting WHERE id = ?", KW::into(has_meeting), KW::use(id), KW::now;
     return has_meeting;
 }

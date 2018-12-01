@@ -71,13 +71,12 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
     auto session = SqliteSessionFactory::getInstance();
     bool hasMeeting = meetings.HasEntity(m_id, session);
     session.close();
-    if (hasMeeting)
-        meetings.Save(meeting);
-    else {
+    if (!hasMeeting){
         response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND, "Такая встреча отсутствует");
         response.send();
         return;
     }
+    meetings.Save(meeting);
     response.send() << json(meeting);
 }
 

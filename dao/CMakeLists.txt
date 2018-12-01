@@ -1,1 +1,2 @@
-add_library(dao OBJECT src/meetingDAO.cpp)
+add_library(dao OBJECT
+        src/meetingDAO.cpp)

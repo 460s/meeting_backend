@@ -1,1 +1,2 @@
-add_library(domain OBJECT src/meeting.cpp)
+add_library(domain OBJECT
+        src/meeting.cpp)
