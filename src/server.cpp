@@ -1,11 +1,15 @@
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/ServerSocketImpl.h>
+#include "Poco/Data/Session.h"
+#include "Poco/Data/SQLite/Connector.h"
 #include <handlers/factory.hpp>
 #include <iostream>
 #include <server.hpp>
 
 namespace {
 
+using namespace Poco::Data::Keywords;
+using Poco::Data::Session;
 using Poco::Net::Socket;
 
 class ServerSocketImpl : public Poco::Net::ServerSocketImpl {
@@ -33,6 +37,19 @@ int Server::main(const std::vector<std::string> & /*args*/) {
 	parameters->setTimeout(10000);
 	parameters->setMaxQueued(100);
 	parameters->setMaxThreads(1);
+
+
+    // register SQLite connector
+    Poco::Data::SQLite::Connector::registerConnector();
+
+    Session session("SQLite", "sample.db");
+
+    session << R"(CREATE TABLE IF NOT EXISTS meeting (
+		id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		name VARCHAR(30),
+		description VARCHAR,
+		address VARCHAR,
+		published BOOL))", now;
 
 	const Poco::Net::ServerSocket socket(ServerSocket("127.0.0.1", 8080));
 

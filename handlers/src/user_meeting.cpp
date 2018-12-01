@@ -1,3 +1,5 @@
+#include "Poco/Data/Session.h"
+#include "Poco/Data/SQLite/Connector.h"
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <handlers.hpp>
@@ -15,6 +17,9 @@ struct Meeting {
 	bool published;
 };
 
+using namespace Poco::Data::Keywords;
+using Poco::Data::Session;
+using Poco::Data::Statement;
 using nlohmann::json;
 
 // сериализация (маршалинг)
@@ -48,30 +53,71 @@ public:
 class MapStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
+		Session session("SQLite", "sample.db");
 		if (meeting.id.has_value()) {
-			m_meetings[meeting.id.value()] = meeting;
+			Statement update(session);
+			update << "UPDATE meeting SET name = ?, description = ?, address = ?, published = ? WHERE id = ?",
+				use(meeting.name),
+				use(meeting.description),
+				use(meeting.address),
+				use(meeting.published),
+				use(meeting.id.value());
+			update.execute();
 		} else {
-			int id = m_meetings.size();
-			meeting.id = id;
-			m_meetings[id] = meeting;
+			Statement insert(session);
+			insert << "INSERT INTO meeting (name,description,address,published) VALUES(?, ?, ?, ?)",
+				use(meeting.name),
+				use(meeting.description),
+				use(meeting.address),
+				use(meeting.published);
+			insert.execute();
 		}
 	}
 	Storage::MeetingList GetList() override {
 		Storage::MeetingList list;
-		for (auto [id, meeting] : m_meetings) {
+		Meeting meeting;
+		int id = 0;
+		Session session("SQLite","sample.db");
+		Statement select(session);
+		select << "SELECT id, name, description, address, published FROM meeting",
+				into(id),
+				into(meeting.name),
+				into(meeting.description),
+				into(meeting.address),
+				into(meeting.published),
+				range(0,1);
+				
+		while (!select.done()) {
+			select.execute();
+			meeting.id = id;
 			list.push_back(meeting);
 		}
 		return list;
 	}
 	std::optional<Meeting> Get(int id) override {
-		if (MeetingInMap(id)) {
-			return m_meetings[id];
+		if (availabilityMeeting(id)) {
+			Meeting meeting;
+			Session session("SQLite","sample.db");
+			Statement select(session);
+			select << "SELECT id, name, description, address, published FROM meeting",
+				into(meeting.name),
+				into(meeting.description),
+				into(meeting.address),
+				into(meeting.published),
+				use(id);
+			select.execute();
+			meeting.id = id;
+			return meeting;
 		}
-		return std::optional<Meeting>();
+		return std::nullopt;
 	}
 	bool Delete(int id) override {
-		if (MeetingInMap(id)) {
-			m_meetings.erase(id);
+		if (availabilityMeeting(id)) {
+			Session session("SQLite","sample.db");
+			Statement delMeeting(session);
+			delMeeting << "DELETE FROM meeting WHERE id = ?",
+					use(id);
+			delMeeting.execute();
 			return true;
 		}
 		return false;
@@ -81,9 +127,15 @@ private:
 	using MeetingMap = std::map<int, Meeting>;
 	MeetingMap m_meetings;
 
-	bool MeetingInMap(int id) const {
-		auto meeting_ptr = m_meetings.find(id);
-		return meeting_ptr != m_meetings.end();
+	bool availabilityMeeting(int id) const {
+		Session session("SQLite","sample.db");
+		Statement findMeeting(session);
+		int count = 0;
+		findMeeting << "SELECT Count(*) FROM meeting WHERE id = ? LIMIT 1",
+			into(count),
+			use(id);
+		findMeeting.execute();
+		return count != 0;
 	}
 };
 
