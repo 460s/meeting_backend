@@ -62,3 +62,4 @@ no changes added to commit (use "git add" and/or "git commit -a")
 Переходим в бранч [hello](https://github.com/460s/meeting_backend/tree/hello)
 
 Сделайте ```git co hello```
+
