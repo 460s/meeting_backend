@@ -1,3 +1,5 @@
+#include "Poco/Data/SQLite/Connector.h"
+#include "Poco/Data/Session.h"
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <handlers.hpp>
@@ -23,7 +25,7 @@ void to_json(json &j, const Meeting &m) {
 	    {"id", m.id.value()},
 	    {"name", m.name},
 	    {"description", m.description},
-		{"address",     m.address},
+	    {"address", m.address},
 	    {"published", m.published}};
 }
 
@@ -87,8 +89,101 @@ private:
 	}
 };
 
+using namespace Poco::Data::Keywords;
+using Poco::Data::Session;
+using Poco::Data::Statement;
+
+class SqliteStorage : public Storage {
+public:
+	void Save(Meeting &meeting) override {
+		if (meeting.id.has_value()) {
+			Statement update(GetSession());
+			update << "UPDATE meeting SET name = ?, description = ?, address = ?, published = ? WHERE id = ?",
+			    use(meeting.name),
+			    use(meeting.description),
+			    use(meeting.address),
+			    use(meeting.published),
+			    use(meeting.id.value()),
+			    now;
+		} else {
+			Statement add(GetSession());
+			add << "INSERT INTO meeting (name, description, address, published) VALUES (?, ?, ?, ?)",
+			    use(meeting.name),
+			    use(meeting.description),
+			    use(meeting.address),
+			    use(meeting.published),
+			    now;
+		}
+	}
+	Storage::MeetingList GetList() override {
+		MeetingList list;
+		Meeting meeting;
+		int id;
+		Statement select(GetSession());
+		select << "SELECT id, name, description, address, published FROM meeting",
+		    into(id),
+		    into(meeting.name),
+		    into(meeting.description),
+		    into(meeting.address),
+		    into(meeting.published),
+		    range(0, 1);
+
+		while (!select.done()) {
+			select.execute();
+			meeting.id = id;
+			list.push_back(meeting);
+		}
+		return list;
+	}
+	std::optional<Meeting> Get(int id) override {
+		auto &session = GetSession();
+		if (HasMeeting(id)) {
+			Meeting meeting;
+			meeting.id = id;
+			Statement get(session);
+			get << "SELECT name, description, address, published FROM meeting WHERE id = ?",
+			    use(id),
+			    into(meeting.name),
+			    into(meeting.description),
+			    into(meeting.address),
+			    into(meeting.published),
+			    now;
+
+			return meeting;
+		} else {
+			return std::nullopt;
+		}
+	}
+	bool Delete(int id) override {
+		if (HasMeeting(id)) {
+			Statement del(GetSession());
+			del << "DELETE FROM meeting WHERE id = ?",
+			    use(id),
+			    now;
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+private:
+	Session &GetSession() {
+		static Session session("SQLite", "sample.db");
+		return session;
+	}
+	bool HasMeeting(int id) {
+		Statement hasMeeting(GetSession());
+		int meetings_cnt = 0;
+		hasMeeting << "SELECT COUNT(*) FROM meeting WHERE id = ?;",
+		    use(id),
+		    into(meetings_cnt),
+		    now;
+		return meetings_cnt != 0;
+	}
+};
+
 Storage &GetStorage() {
-	static MapStorage storage;
+	static SqliteStorage storage;
 	return storage;
 }
 

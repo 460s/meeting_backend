@@ -1,0 +1,1 @@
+/usr/bin/clang++         CMakeFiles/hello.dir/main.cpp.o  -o bin/hello  -L/home/niss/.conan/data/get_user/0.0.1/demo/testing/package/5d88dc4b26402479b7aa0fcb29ca9b9c28da4c9f/lib -Wl,-rpath,/home/niss/.conan/data/get_user/0.0.1/demo/testing/package/5d88dc4b26402479b7aa0fcb29ca9b9c28da4c9f/lib -lget_user 

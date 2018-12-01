@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/niss/.conan/data/get_user/0.0.1/demo/testing/package/5d88dc4b26402479b7aa0fcb29ca9b9c28da4c9f/include/user.hpp
+iostream
+-
+
+/home/niss/meeting_backend/main.cpp
+user.hpp
+-
+iostream
+-
+thread
+-
+
