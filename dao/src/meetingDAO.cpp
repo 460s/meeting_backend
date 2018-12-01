@@ -10,15 +10,15 @@ void dao::MeetingDAO::Save(Meeting &meeting){
     if (meeting.id) {
         MeetingTuple mt = Meeting::MeetingStruct2Tuple(meeting);
         session << "UPDATE meeting SET name = ?, description = ?, address = ?, published = ? WHERE id = ?",
-                KW::use(mt),
-                KW::use(meeting.id.value()),
-                KW::now;
+                    KW::use(mt),
+                    KW::use(meeting.id.value()),
+                    KW::now;
     } else {
         std::vector<MeetingTuple> v;
         v.push_back(Meeting::MeetingStruct2Tuple(meeting));
         session << "INSERT INTO meeting VALUES(NULL, ?, ?, ?, ?)",
-                KW::use(v),
-                KW::now;
+                    KW::use(v),
+                    KW::now;
     }
 }
 
@@ -30,9 +30,9 @@ IDAO::MeetingList dao::MeetingDAO::GetList() {
 
     Poco::Data::Statement select(session);
     select << "SELECT id, name, description, address, published FROM meeting",
-            KW::into(id),
-            KW::into(mp),
-            KW::range(0, 1);
+                KW::into(id),
+                KW::into(mp),
+                KW::range(0, 1);
     while (!select.done()) {
         select.execute();
         list.push_back(Meeting::MeetingTuple2Struct(mp, id));
@@ -45,10 +45,10 @@ std::optional<Meeting> dao::MeetingDAO::Get(int id) {
     auto session = SqliteSessionFactory::getInstance();
     if (HasEntity(id, session)) {
         MeetingTuple mp;
-        session << R"(SELECT name, description, address, published FROM meeting WHERE id = ?)",
-                KW::use(id),
-                KW::into(mp),
-                KW::now;
+        session << "SELECT name, description, address, published FROM meeting WHERE id = ?",
+                    KW::use(id),
+                    KW::into(mp),
+                    KW::now;
         session.close();
 
         return Meeting::MeetingTuple2Struct(mp, id);
