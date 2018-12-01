@@ -3,12 +3,8 @@
 #include <Poco/Data/Session.h>
 #include <Poco/Data/SQLite/Connector.h>
 #include <handlers/factory.hpp>
-#include <iostream>
 #include <server.hpp>
-#include <config.hpp>
-
-const std::string config::kDBDriver = "SQLite";
-const std::string config::kPath2DB = "sample.db";
+#include "sqlite_session_factory.hpp"
 
 namespace {
 
@@ -47,7 +43,7 @@ int Server::main(const std::vector<std::string> &args) {
 	const Poco::Net::ServerSocket socket(ServerSocket("127.0.0.1", 8080));
 
 	Poco::Data::SQLite::Connector::registerConnector();
-	Poco::Data::Session session(config::kDBDriver, config::kPath2DB);
+	auto session = SqliteSessionFactory::getInstance();
 
 	if (std::find(args.begin(), args.end(), "recreate") != args.end()){
 		session << "DROP TABLE IF EXISTS meeting;", now;
@@ -61,7 +57,6 @@ int Server::main(const std::vector<std::string> &args) {
 	}
 
     session.close();
-
 	Poco::Net::HTTPServer server(new handlers::Factory(), socket, parameters);
 
 	server.start();

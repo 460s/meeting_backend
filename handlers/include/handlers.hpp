@@ -3,12 +3,6 @@
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPServerResponse.h>
 
-// #define REGISTER_HANDLER(name) \
-//     class name: public Poco::Net::HTTPRequestHandler { \
-//     private: \
-//     void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override; \
-// }
-
 class RestHandler : public Poco::Net::HTTPRequestHandler {
 	void handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) override {
 		response.setContentType("application/json");
