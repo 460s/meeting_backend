@@ -34,11 +34,10 @@ IDAO::MeetingList dao::MeetingDAO::GetList() {
                 KW::into(id),
                 KW::into(mp),
                 KW::range(0, 1);
-    if (select.dataSetCount() != 0) {
-        while (!select.done()) {
-            if (select.execute())
-                list.push_back(Meeting::MeetingTuple2Struct(mp, id));
-        }
+
+    while (!select.done()) {
+        if (select.execute())
+            list.push_back(Meeting::MeetingTuple2Struct(mp, id));
     }
     session.close();
     return list;
