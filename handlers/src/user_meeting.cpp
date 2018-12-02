@@ -105,14 +105,17 @@ public:
 	void Save(Meeting &meeting) override {
 		Session session(SESSION_TYPE, CONNECTING_STRING);
 		if (meeting.id.has_value()) {
-			// Statement update(session);
-			// update << "UPDATE meeting SET (?, ?, ?, ?) WHERE id = ?",
-			//     use(meeting.name),
-			//     use(meeting.description),
-			//     use(meeting.address),
-			//     use(meeting.published),
-			//     use(meeting.id);
-			// update.execute();
+			Statement update(session);
+			update << R"(
+				UPDATE meeting 
+				SET name = ?, description = ?, address = ?, published = ?
+				WHERE id = ?)",
+			    use(meeting.name),
+			    use(meeting.description),
+			    use(meeting.address),
+			    use(meeting.published),
+			    use(meeting.id.value());
+			update.execute();
 		} else {
 			Statement insert(session);
 			insert << R"(
@@ -135,7 +138,7 @@ public:
 		Statement select(session);
 
 		select << "SELECT id, name, description, address, published FROM meeting",
-		    into(id),
+		    into(id), // как сюда пропихнуть meeting.id ?
 		    into(meeting.name),
 		    into(meeting.description),
 		    into(meeting.address),
