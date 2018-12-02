@@ -118,7 +118,6 @@ public:
 			    use(meeting.id.value());
 			update.execute();
 		} else {
-			std::cout << "save" << meeting.name << std::endl;
 			Statement insert(session);
 			insert << R"(
 				INSERT INTO meeting
@@ -155,12 +154,32 @@ public:
 	}
 
 	std::optional<Meeting> Get(int id) override {
+		Meeting meeting;
+		Session session(SESSION_TYPE, CONNECTING_STRING);
+		Statement select(session);
+
+		select << R"(
+			SELECT name, description, address, published 
+			FROM meeting
+			WHERE id = ?
+			)",
+		    into(meeting.name),
+		    into(meeting.description),
+		    into(meeting.address),
+		    into(meeting.published),
+		    use(id);
+		select.execute();
+
+		if (select.subTotalRowCount() > 0) {
+			meeting.id = id;
+			return meeting;
+		}
 		return std::optional<Meeting>();
 	}
 
 	bool Delete(int id) override {
 		Session session(SESSION_TYPE, CONNECTING_STRING);
-		Statement deleteMeeting (session);
+		Statement deleteMeeting(session);
 		deleteMeeting << R"(
 				DELETE FROM meeting 
 				WHERE id = ?)",
@@ -170,7 +189,6 @@ public:
 	}
 
 	~DbStorage() {
-		std::cout << "DbStorage destructor" << std::endl;
 		// m_session.close();
 	}
 
