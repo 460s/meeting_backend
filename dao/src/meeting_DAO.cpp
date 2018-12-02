@@ -19,7 +19,13 @@ void dao::MeetingDAO::Save(Meeting &meeting){
         session << "INSERT INTO meeting VALUES(NULL, ?, ?, ?, ?)",
                     KW::use(v),
                     KW::now;
+        int id = -1;
+        session << "SELECT last_insert_rowid()", KW::into(id), KW::now;
+        if (id != -1){
+            meeting.id = id;
+        }
     }
+    session.close();
 }
 
 IDAO::MeetingList dao::MeetingDAO::GetList() {
