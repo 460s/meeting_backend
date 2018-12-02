@@ -145,16 +145,17 @@ namespace handlers {
         bool MeetingExist(int id) const {
             auto &session = Session();
             Poco::Data::Statement find(session);
-            std::string meeting_name;
+            Poco::Nullable<std::string> meeting_name;
             /*
              * Костыль
              */
+            std::string name;
             session << "SELECT name FROM meeting WHERE id = ?",
                     into(meeting_name),
                     use(id),
                     now;
+            return !meeting_name.isNull();
 
-            return !meeting_name.empty();
         }
 
         bool IsNameQnique(std::string meeting_name) const {
