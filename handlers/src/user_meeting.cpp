@@ -105,8 +105,10 @@ namespace handlers {
 
             while (!select.done()) {
                 select.execute();
-                meeting.id = meeting_id;
-                list.push_back(meeting);
+                if(meeting.name != "") {
+                    meeting.id = meeting_id;
+                    list.push_back(meeting);
+                }
             }
             return list;
         }
