@@ -16,3 +16,4 @@ add_subdirectory(handlers)
 
 add_executable(${PROJECT_NAME} main.cpp src/server.cpp $<TARGET_OBJECTS:handlers>)
 target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS})
+file(COPY schema.sql DESTINATION etc)

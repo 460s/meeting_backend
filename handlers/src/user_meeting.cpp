@@ -1,9 +1,12 @@
-#include <Poco/Net/HTTPServerRequest.h>
-#include <Poco/Net/HTTPServerResponse.h>
-#include <handlers.hpp>
 #include <iostream>
+#include <handlers.hpp>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <sqlite.hpp>
+#include <Poco/Data/Session.h>
+#include <Poco/Data/SQLite/Connector.h>
+#include <Poco/Net/HTTPServerRequest.h>
+#include <Poco/Net/HTTPServerResponse.h>
 
 namespace handlers {
 
@@ -23,7 +26,7 @@ void to_json(json &j, const Meeting &m) {
 	    {"id", m.id.value()},
 	    {"name", m.name},
 	    {"description", m.description},
-		{"address",     m.address},
+	    {"address", m.address},
 	    {"published", m.published}};
 }
 
@@ -87,8 +90,103 @@ private:
 	}
 };
 
+using Poco::Data::Keywords::into;
+using Poco::Data::Keywords::now;
+using Poco::Data::Keywords::range;
+using Poco::Data::Keywords::use;
+using Poco::Data::Statement;
+
+class SqliteStorage : public Storage {
+public:
+	void Save(Meeting &meeting) override {
+		if (meeting.id.has_value()) {
+			Statement update(m_session);
+			auto published = b2i(meeting.published);
+			update << "UPDATE meeting SET "
+			          "name=?, description=?, address=?, published=? "
+			          "WHERE id=?",
+				use(meeting.name),
+				use(meeting.description),
+				use(meeting.address),
+				use(published),
+				use(meeting.id.value()),
+				now;
+		} else {
+			Statement insert(m_session);
+			int published = b2i(meeting.published);
+			insert << "INSERT INTO meeting (name, description, address, published) VALUES(?, ?, ?, ?)",
+				use(meeting.name),
+				use(meeting.description),
+				use(meeting.address),
+				use(published),
+				now;
+
+			Statement select(m_session);
+			int id = 0;
+			select << "SELECT last_insert_rowid()", into(id), now;
+			meeting.id = id;
+		}
+	}
+
+	Storage::MeetingList GetList() override {
+		Storage::MeetingList list;
+		Meeting meeting;
+		Statement select(m_session);
+		select << "SELECT id, name, description, address, published FROM meeting",
+			into(meeting.id.emplace()),
+			into(meeting.name),
+			into(meeting.description),
+			into(meeting.address),
+			into(meeting.published),
+			range(0, 1); //  iterate over result set one row at a time
+
+
+		while (!select.done()) {
+			select.execute();
+			if (meeting.name != "") {
+				list.push_back(meeting);
+			}
+		}
+		return list;
+	}
+
+	std::optional<Meeting> Get(int id) override {
+		int cnt = 0;
+		m_session << "SELECT COUNT(*) FROM meeting WHERE id=?", use(id), into(cnt), now;
+		if (cnt > 0) {
+			Meeting meeting;
+			Statement select(m_session);
+			int tmp_id = 0;
+			select << "SELECT id, name, description, address, published FROM meeting WHERE id=?",
+				use(id),
+				into(tmp_id),
+				into(meeting.name),
+				into(meeting.description),
+				into(meeting.address),
+				into(meeting.published),
+				now;
+			meeting.id = tmp_id;
+			return meeting;
+		}
+		return std::nullopt;
+	}
+
+	bool Delete(int id) override {
+		m_session << "DELETE FROM meeting WHERE id=?", use(id), now;
+		return true;
+	}
+
+private:
+
+	Poco::Data::Session m_session{sqlite::TYPE_SESSION, sqlite::DB_PATH};
+
+	int b2i(bool b) {
+		return b ? 1 : 0;
+	}
+};
+
 Storage &GetStorage() {
-	static MapStorage storage;
+	static SqliteStorage storage;
 	return storage;
 }
 
@@ -113,12 +211,12 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 }
 
 void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	//response.setContentType("application/json");
 	auto &meetings = GetStorage();
 	auto meeting = meetings.Get(m_id);
 	if (meeting.has_value()) {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK);
 		response.send() << json(meeting.value());
+		return;
 	}
 
 	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
