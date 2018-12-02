@@ -3,7 +3,6 @@
 #include <handlers/error.hpp>
 #include <handlers/factory.hpp>
 #include <regex>
-#include <iostream>
 
 namespace handlers {
 
