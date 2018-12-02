@@ -82,6 +82,13 @@ namespace handlers {
                             use(meeting.address),
                             use(meeting.published);
                     insert.execute();
+
+                    int id = 0;
+                    session << "SELECT id FROM meeting WHERE name = ?",
+                            into(id),
+                            use(meeting.name),
+                            now;
+                    meeting.id = id;
                     return Poco::Net::HTTPServerResponse::HTTP_OK;
                 } else {
                     return Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST;
