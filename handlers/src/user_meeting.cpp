@@ -1,3 +1,4 @@
+#include "Poco/Data/Session.h"
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <handlers.hpp>
@@ -15,7 +16,14 @@ struct Meeting {
 	bool published;
 };
 
+// где их объединить с server.cpp ?
+auto const SESSION_TYPE = "SQLite";
+auto const CONNECTING_STRING = "meetups.db";
+
 using nlohmann::json;
+using Poco::Data::Session;
+using Poco::Data::Statement;
+using namespace Poco::Data::Keywords;
 
 // сериализация (маршалинг)
 void to_json(json &j, const Meeting &m) {
@@ -23,7 +31,7 @@ void to_json(json &j, const Meeting &m) {
 	    {"id", m.id.value()},
 	    {"name", m.name},
 	    {"description", m.description},
-		{"address",     m.address},
+	    {"address", m.address},
 	    {"published", m.published}};
 }
 
@@ -87,8 +95,78 @@ private:
 	}
 };
 
+class DbStorage : public Storage {
+public:
+	// DbStorage() {
+	// 	std::cout << "DbStorage constructor" << std::endl;
+	//  Как инициализировать сессию тут, а в деструкторе закрыть\убить?
+	// }
+	using MeetingList = std::vector<Meeting>;
+	void Save(Meeting &meeting) override {
+		Session session(SESSION_TYPE, CONNECTING_STRING);
+		if (meeting.id.has_value()) {
+			// Statement update(session);
+			// update << "UPDATE meeting SET (?, ?, ?, ?) WHERE id = ?",
+			//     use(meeting.name),
+			//     use(meeting.description),
+			//     use(meeting.address),
+			//     use(meeting.published),
+			//     use(meeting.id);
+			// update.execute();
+		} else {
+			Statement insert(session);
+			insert << R"(
+				INSERT INTO meeting
+					(name, description, address, published)
+				  VALUES (?, ?, ?, ?);)",
+			    use(meeting.name),
+			    use(meeting.description),
+			    use(meeting.address),
+			    use(meeting.published);
+			insert.execute();
+		}
+	};
+
+	MeetingList GetList() override {
+		Meeting meeting;
+		int id = -1;
+		Storage::MeetingList list;
+		Session session(SESSION_TYPE, CONNECTING_STRING);
+		Statement select(session);
+
+		select << "SELECT id, name, description, address, published FROM meeting",
+		    into(id),
+		    into(meeting.name),
+		    into(meeting.description),
+		    into(meeting.address),
+		    into(meeting.published),
+		    range(0, 1);
+		while (!select.done()) {
+			select.execute();
+			meeting.id = id;
+			list.push_back(meeting);
+		}
+		return list;
+	}
+
+	std::optional<Meeting> Get(int id) override {
+		return std::optional<Meeting>();
+	}
+	bool Delete(int id) override {
+		return false;
+	}
+
+	~DbStorage() {
+		std::cout << "DbStorage destructor" << std::endl;
+		// m_session.close();
+	}
+
+private:
+	// Session m_session;
+};
+
 Storage &GetStorage() {
-	static MapStorage storage;
+	static DbStorage storage;
 	return storage;
 }
 

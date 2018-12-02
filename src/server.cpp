@@ -2,6 +2,7 @@
 #include "Poco/Data/Session.h"
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/ServerSocketImpl.h>
+#include <fstream>
 #include <handlers/factory.hpp>
 #include <iostream>
 #include <server.hpp>
@@ -32,7 +33,7 @@ public:
 
 } // anonymous namespace
 
-int Server::main(const std::vector<std::string> & /*args*/) {
+int Server::main(const std::vector<std::string> &args) {
 	auto *parameters = new Poco::Net::HTTPServerParams();
 	parameters->setTimeout(10000);
 	parameters->setMaxQueued(100);
@@ -42,28 +43,19 @@ int Server::main(const std::vector<std::string> & /*args*/) {
 
 	Poco::Net::HTTPServer server(new handlers::Factory(), socket, parameters);
 
-
-	// if (std::find(args.begin(), args.end(), "init-db") != args.end()) {
-	// register SQLite connector
 	Poco::Data::SQLite::Connector::registerConnector();
-
-	// create a session
-	Session session("SQLite", "sample.db");
-
-	// drop sample table, if it exists
-	session << "DROP TABLE IF EXISTS meeting", now;
-
-	// (re)create table
-	session << R"(CREATE TABLE meeting (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			name TEXT UNIQUE NOT NULL,
-			description TEXT NOT NULL,
-			address TEXT NOT NULL,
-			published INTEGER NOT NULL
-		);)",
-	    now;
-	// }
-
+	if (std::find(args.begin(), args.end(), "init-db") != args.end()) {
+		Session session("SQLite", "meetups.db");
+		session << "DROP TABLE IF EXISTS meeting", now;
+		session << R"(CREATE TABLE meeting (
+										id INTEGER PRIMARY KEY AUTOINCREMENT,
+										name TEXT UNIQUE NOT NULL,
+										description TEXT NOT NULL,
+										address TEXT NOT NULL,
+										published INTEGER NOT NULL
+									);)",
+		    now;
+	}
 
 	server.start();
 	waitForTerminationRequest();

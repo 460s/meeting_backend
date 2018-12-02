@@ -1,7 +1,5 @@
 @host = localhost:8080
 
-GET http://{{host}} HTTP/1.1
-
 ###
 // Получить meetings
 GET http://{{host}}/user/meeting HTTP/1.1
