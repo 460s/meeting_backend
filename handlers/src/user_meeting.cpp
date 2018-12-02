@@ -4,19 +4,23 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <Poco/URI.h>
+#include <optional>
+#include <data_session_factory.hpp>
 
 namespace handlers {
 
+using namespace Poco::Data::Keywords;
+
 struct Meeting {
-	int id;
+	std::optional<int> id;
 	std::string name;
 	std::string description;
 	std::string address;
-	std::string signup_description;
+	/*std::string signup_description;
 	int signup_from_date;
 	int signup_to_date;
 	int from_date;
-	int to_date;
+	int to_date;*/
 	bool published;
 };
 
@@ -25,15 +29,15 @@ using nlohmann::json;
 // сериализация (маршалинг)
 void to_json(json &j, const Meeting &m) {
 	j = json{
-	    {"id", m.id},
+	    {"id", m.id.value()},
 		{"name", m.name},
 		{"description", m.description},
 		{"address", m.address},
-		{"signup_description", m.signup_description},
+		/*{"signup_description", m.signup_description},
 		{"signup_from_date", m.signup_from_date},
 		{"signup_to_date", m.signup_to_date},
 		{"from_date", m.from_date},
-		{"to_date", m.to_date},
+		{"to_date", m.to_date},*/
 		{"published", m.published}
 	};
 }
@@ -43,19 +47,18 @@ void from_json(const json &j, Meeting &m) {
 	j.at("name").get_to(m.name);
 	j.at("description").get_to(m.description);
 	j.at("address").get_to(m.address);
-	j.at("signup_description").get_to(m.signup_description);
+	/*j.at("signup_description").get_to(m.signup_description);
 	j.at("signup_from_date").get_to(m.signup_from_date);
 	j.at("signup_to_date").get_to(m.signup_to_date);
 	j.at("from_date").get_to(m.from_date);
-	j.at("to_date").get_to(m.to_date);
+	j.at("to_date").get_to(m.to_date);*/
 	j.at("published").get_to(m.published);
 }
 
 class Storage {
 public:
 	using MeetingList = std::vector<Meeting>;
-	virtual void Create(Meeting &meeting) = 0;
-	virtual void Update(Meeting &meeting, int id) = 0;
+	virtual void Save(Meeting &meeting) = 0;
 	virtual void Delete(int id) = 0;
 	virtual Meeting Get(int id) = 0;
 	virtual MeetingList GetList() = 0;
@@ -63,43 +66,110 @@ public:
 	virtual ~Storage() {}
 };
 
-class MapStorage : public Storage {
+class DBStorage : public Storage {
 public:
-	void Create(Meeting &meeting) override {
-		meeting.id = m_uid;
-		m_meetings[m_uid] = meeting;
-		m_uid++;
-	}
-	void Update(Meeting &meeting, int id = 0) override {
-		meeting.id = id;
-		m_meetings[id] = meeting;
-	}
-	void Delete(int id) override {
-		m_meetings.erase(id);
-	}
-	Meeting Get(int id) override {
-		return m_meetings[id];
-	}
-	Storage::MeetingList GetList() override {
-		Storage::MeetingList list;
-		for (auto [id, meeting] : m_meetings) {
-			list.push_back(meeting);
-		}
-		return list;
-	}
-	bool Exists(int id) override {
-		auto search_result = m_meetings.find(id);
-		return search_result != m_meetings.end();
+	void Save(Meeting &meeting) override {
+		auto session = DataSessionFactory::getInstance();
+		int id;
+            if (meeting.id.has_value()) {
+				Poco::Data::Statement update(session);
+				update << "UPDATE meeting SET name = ?, description = ?, address = ?, published = ? WHERE id = ?",
+						use(meeting.name),
+						use(meeting.description),
+						use(meeting.address),
+						use(meeting.published),
+						use(meeting.id.value());
+				update.execute();
+			} else {
+				Poco::Data::Statement insert(session);
+				insert << "INSERT INTO meeting (name, description, address, published) VALUES(?, ?, ?, ?)",
+						use(meeting.name),
+						use(meeting.description),
+						use(meeting.address),
+						use(meeting.published);
+				insert.execute();
+
+				Poco::Data::Statement select(session);
+				select << "SELECT last_insert_rowid() as id FROM meeting LIMIT 1",
+						into(id);
+				select.execute();
+				meeting.id = id;
+			}
+		session.close();
 	}
 
-private:
-	using MeetingMap = std::map<int, Meeting>;
-	MeetingMap m_meetings;
-	int m_uid = 1;
+	void Delete(int id) override {
+		auto session = DataSessionFactory::getInstance();
+		Poco::Data::Statement deleteMeeting(session);
+		deleteMeeting << "DELETE FROM meeting WHERE id = ?",
+				use(id);
+		deleteMeeting.execute();
+		session.close();
+	}
+
+	Meeting Get(int id) override {
+
+		Meeting meeting;
+		auto session = DataSessionFactory::getInstance();
+		Poco::Data::Statement select(session);
+		select << "SELECT name, description, address, published FROM meeting WHERE id = ?",
+				into(meeting.name),
+				into(meeting.description),
+				into(meeting.address),
+				into(meeting.published),
+				use(id);
+		select.execute();
+		meeting.id = id;
+		session.close();
+		return meeting;
+            
+	}
+
+	Storage::MeetingList GetList() override {
+		
+		auto session = DataSessionFactory::getInstance();
+		Poco::Data::Statement select(session);
+		Storage::MeetingList list;
+		Meeting meeting;
+		int row_id = 0;
+		
+		select << "SELECT id, name, description, address, published FROM meeting",
+				into(row_id),
+				into(meeting.name),
+				into(meeting.description),
+				into(meeting.address),
+				into(meeting.published),
+				range(0, 1);
+
+		while (!select.done()) {
+			select.execute();
+			if(row_id) { //чтобы не получать непонятно что, если таблица пустая
+				meeting.id = row_id;
+				list.push_back(meeting);
+			}
+			
+		}
+		session.close();
+		
+		return list;
+	}
+
+	bool Exists(int id) override {
+		auto session = DataSessionFactory::getInstance();
+		Poco::Data::Statement find(session);
+		int meeting_count = 0;
+		find << "SELECT COUNT(*) FROM meeting WHERE id = ?",
+				into(meeting_count),
+				use(id);
+		find.execute();
+		session.close();
+		return meeting_count != 0;
+	}
+
 };
 
 Storage &GetStorage() {
-	static MapStorage storage;
+	static DBStorage storage;
 	return storage;
 }
 // Вывод сообщений в консоль
@@ -114,6 +184,7 @@ void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, P
 	for (auto meeting : storage.GetList()) {
 		result.push_back(meeting);
 	}
+	
 	response.send() << result;
 
 }
@@ -142,12 +213,14 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 	//"Грубо" ловим ошибку, если нам прислали не те данные (нехватает поля, не тот тип поля и т.д.)
 	try {
 		Meeting meeting = j;
-		storage.Create(meeting);
+		storage.Save(meeting);
+		
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 		response.send() << json(meeting);
+		
 		console_log("Created new meeting:");
 		console_log(json(meeting).dump());
-	} catch(...) {
+	} catch(json::exception e) {
 		console_log("Trying to create meeting. Validation error");
 		console_log(j.dump());
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
@@ -164,12 +237,13 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 		//"Грубо" ловим ошибку, если нам прислали не те данные (нехватает поля, не тот тип поля и т.д.)
 		try {
 			Meeting meeting = j;
-			storage.Update(meeting, m_id);
+			meeting.id = m_id;
+			storage.Save(meeting);
 			response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 			response.send() << json(meeting);
 			console_log("Updated  meeting #"+std::to_string(m_id)+":");
 			console_log(j.dump());
-		} catch(...) {
+		} catch(json::exception e) {
 			console_log("Trying to update meeting. Validation error");
 			console_log(j.dump());
 			response.setStatus(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);

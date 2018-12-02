@@ -3,6 +3,9 @@
 #include <handlers/factory.hpp>
 #include <iostream>
 #include <server.hpp>
+#include "Poco/Data/Session.h"
+#include "Poco/Data/SQLite/Connector.h"
+#include <data_session_factory.hpp>
 
 namespace {
 
@@ -28,7 +31,9 @@ public:
 
 } // anonymous namespace
 
-int Server::main(const std::vector<std::string> & /*args*/) {
+int Server::main(const std::vector<std::string> & args) {
+	using namespace Poco::Data::Keywords;
+
 	auto *parameters = new Poco::Net::HTTPServerParams();
 	parameters->setTimeout(10000);
 	parameters->setMaxQueued(100);
@@ -37,6 +42,26 @@ int Server::main(const std::vector<std::string> & /*args*/) {
 	const Poco::Net::ServerSocket socket(ServerSocket("127.0.0.1", 8080));
 
 	Poco::Net::HTTPServer server(new handlers::Factory(), socket, parameters);
+
+
+    Poco::Data::SQLite::Connector::registerConnector();
+	
+	auto session = DataSessionFactory::getInstance();
+
+	if (std::find(args.begin(), args.end(), "init-db") != args.end()) {
+
+		session << "DROP TABLE IF EXISTS meeting;", now;
+		
+	}
+	session << R"(CREATE TABLE IF NOT EXISTS `meeting` (
+					`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+					`name`	TEXT,
+					`description`	TEXT,
+					`address`	TEXT,
+					`published`	INTEGER
+				))",
+				now;
+	session.close();
 
 	server.start();
 	waitForTerminationRequest();
