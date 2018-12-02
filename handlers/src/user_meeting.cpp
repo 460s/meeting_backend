@@ -21,6 +21,8 @@ using namespace Poco::Data::Keywords;
 using Poco::Data::Session;
 using Poco::Data::Statement;
 using nlohmann::json;
+constexpr char sqlType[] = "SQLite";
+constexpr char path[] = "sample.db";
 
 // сериализация (маршалинг)
 void to_json(json &j, const Meeting &m) {
@@ -53,7 +55,7 @@ public:
 class MapStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
-		Session session("SQLite", "sample.db");
+		Session session(sqlType, path);
 		if (meeting.id.has_value()) {
 			Statement update(session);
 			update << "UPDATE meeting SET name = ?, description = ?, address = ?, published = ? WHERE id = ?",
@@ -77,7 +79,7 @@ public:
 		Storage::MeetingList list;
 		Meeting meeting;
 		int id = 0;
-		Session session("SQLite","sample.db");
+		Session session(sqlType, path);
 		Statement select(session);
 		select << "SELECT id, name, description, address, published FROM meeting",
 				into(id),
@@ -97,9 +99,9 @@ public:
 	std::optional<Meeting> Get(int id) override {
 		if (availabilityMeeting(id)) {
 			Meeting meeting;
-			Session session("SQLite","sample.db");
+		Session session(sqlType, path);
 			Statement select(session);
-			select << "SELECT id, name, description, address, published FROM meeting",
+			select << "SELECT id, name, description, address, published FROM meeting WHERE id = ?",
 				into(meeting.name),
 				into(meeting.description),
 				into(meeting.address),
@@ -113,7 +115,7 @@ public:
 	}
 	bool Delete(int id) override {
 		if (availabilityMeeting(id)) {
-			Session session("SQLite","sample.db");
+			Session session(sqlType, path);
 			Statement delMeeting(session);
 			delMeeting << "DELETE FROM meeting WHERE id = ?",
 					use(id);
@@ -128,7 +130,7 @@ private:
 	MeetingMap m_meetings;
 
 	bool availabilityMeeting(int id) const {
-		Session session("SQLite","sample.db");
+		Session session(sqlType, path);
 		Statement findMeeting(session);
 		int count = 0;
 		findMeeting << "SELECT Count(*) FROM meeting WHERE id = ? LIMIT 1",
