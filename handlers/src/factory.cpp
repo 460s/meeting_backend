@@ -18,7 +18,6 @@ HTTPRequestHandler *Factory::GetMethodHandlers(const std::string &uri) const {
 
 HTTPRequestHandler *Factory::PostMethodHandlers(const std::string &uri) const {
 	if (uri == "/user/meeting") {
-		std::cout << "PostMethodHandlers" << std::endl;
 		return new UserMeetingCreate();
 	}
 	return nullptr;

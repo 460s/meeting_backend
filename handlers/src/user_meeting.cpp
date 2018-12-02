@@ -102,6 +102,7 @@ public:
 	//  Как инициализировать сессию тут, а в деструкторе закрыть\убить?
 	// }
 	using MeetingList = std::vector<Meeting>;
+
 	void Save(Meeting &meeting) override {
 		Session session(SESSION_TYPE, CONNECTING_STRING);
 		if (meeting.id.has_value()) {
@@ -117,11 +118,12 @@ public:
 			    use(meeting.id.value());
 			update.execute();
 		} else {
+			std::cout << "save" << meeting.name << std::endl;
 			Statement insert(session);
 			insert << R"(
 				INSERT INTO meeting
 					(name, description, address, published)
-				  VALUES (?, ?, ?, ?);)",
+				  VALUES (?, ?, ?, ?))",
 			    use(meeting.name),
 			    use(meeting.description),
 			    use(meeting.address),
@@ -155,8 +157,16 @@ public:
 	std::optional<Meeting> Get(int id) override {
 		return std::optional<Meeting>();
 	}
+
 	bool Delete(int id) override {
-		return false;
+		Session session(SESSION_TYPE, CONNECTING_STRING);
+		Statement deleteMeeting (session);
+		deleteMeeting << R"(
+				DELETE FROM meeting 
+				WHERE id = ?)",
+		    use(id);
+		deleteMeeting.execute();
+		return deleteMeeting.done();
 	}
 
 	~DbStorage() {
