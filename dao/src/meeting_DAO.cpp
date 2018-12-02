@@ -1,4 +1,4 @@
-#include <meetingDAO.hpp>
+#include <meeting_DAO.hpp>
 #include <sqlite_session_factory.hpp>
 
 namespace KW = Poco::Data::Keywords;
@@ -24,6 +24,7 @@ void dao::MeetingDAO::Save(Meeting &meeting){
 
 IDAO::MeetingList dao::MeetingDAO::GetList() {
     IDAO::MeetingList list;
+    list.clear();
     auto session = SqliteSessionFactory::getInstance();
     MeetingTuple mp;
     int id = 0;
@@ -33,9 +34,11 @@ IDAO::MeetingList dao::MeetingDAO::GetList() {
                 KW::into(id),
                 KW::into(mp),
                 KW::range(0, 1);
-    while (!select.done()) {
-        select.execute();
-        list.push_back(Meeting::MeetingTuple2Struct(mp, id));
+    if (select.dataSetCount() != 0) {
+        while (!select.done()) {
+            if (select.execute())
+                list.push_back(Meeting::MeetingTuple2Struct(mp, id));
+        }
     }
     session.close();
     return list;
@@ -43,7 +46,7 @@ IDAO::MeetingList dao::MeetingDAO::GetList() {
 
 std::optional<Meeting> dao::MeetingDAO::Get(int id) {
     auto session = SqliteSessionFactory::getInstance();
-    if (HasEntity(id, session)) {
+    if (HasEntity(id)) {
         MeetingTuple mp;
         session << "SELECT name, description, address, published FROM meeting WHERE id = ?",
                     KW::use(id),
@@ -59,7 +62,7 @@ std::optional<Meeting> dao::MeetingDAO::Get(int id) {
 
 bool dao::MeetingDAO::Delete(int id) {
     auto session = SqliteSessionFactory::getInstance();
-    if (HasEntity(id, session)) {
+    if (HasEntity(id)) {
         session << "DELETE FROM meeting WHERE id = ?", KW::use(id), KW::now;
         session.close();
         return true;
@@ -68,9 +71,11 @@ bool dao::MeetingDAO::Delete(int id) {
     return false;
 }
 
-bool dao::MeetingDAO::HasEntity(int id, Poco::Data::Session &session) {
+bool dao::MeetingDAO::HasEntity(int id) {
+    auto session = SqliteSessionFactory::getInstance();
     bool has_meeting = false;
     session << "SELECT COUNT(*) FROM meeting WHERE id = ?", KW::into(has_meeting), KW::use(id), KW::now;
+    session.close();
     return has_meeting;
 }
 

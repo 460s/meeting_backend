@@ -7,6 +7,6 @@ public:
     static Poco::Data::Session getInstance();
 
 private:
-    static std::string kDBDriver;
-    static std::string kPath2DB;
+    constexpr static auto kDBDriver = "SQLite";
+    constexpr static auto kPath2DB = "sample.db";
 };

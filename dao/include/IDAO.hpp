@@ -11,6 +11,6 @@ public:
     virtual MeetingList GetList() = 0;
     virtual std::optional<Meeting> Get(int id) = 0;
     virtual bool Delete(int id) = 0;
-    virtual bool HasEntity(int id, Poco::Data::Session &session) = 0;
-    virtual ~IDAO() {}
+    virtual bool HasEntity(int id) = 0;
+    virtual ~IDAO() = default;
 };

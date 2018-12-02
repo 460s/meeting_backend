@@ -9,7 +9,7 @@ public:
     IDAO::MeetingList GetList() override;
     std::optional<Meeting> Get(int id) override;
     bool Delete(int id) override;
-    bool HasEntity(int id, Poco::Data::Session &session) override;
+    bool HasEntity(int id) override;
 };
 
 }

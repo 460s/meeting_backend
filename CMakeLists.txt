@@ -16,5 +16,12 @@ add_subdirectory(handlers)
 add_subdirectory(domain)
 add_subdirectory(dao)
 
-add_executable(${PROJECT_NAME} main.cpp src/server.cpp src/sqlite_session_factory.cpp $<TARGET_OBJECTS:domain> $<TARGET_OBJECTS:dao> $<TARGET_OBJECTS:handlers>)
+add_executable(${PROJECT_NAME}
+		main.cpp
+		src/server.cpp
+		src/sqlite_session_factory.cpp
+		$<TARGET_OBJECTS:domain>
+		$<TARGET_OBJECTS:dao>
+		$<TARGET_OBJECTS:handlers>)
+
 target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS})

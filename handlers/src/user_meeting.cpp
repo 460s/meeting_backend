@@ -5,7 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <sqlite_session_factory.hpp>
-#include <meetingDAO.hpp>
+#include <meeting_DAO.hpp>
 
 using nlohmann::json;
 using domain::MeetingTuple;
@@ -22,7 +22,7 @@ void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, P
     response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
     auto &storage = GetMeetingDAO();
     nlohmann::json result = nlohmann::json::array();
-    for (auto &meeting : storage.GetList()) {
+    for (const auto &meeting : storage.GetList()) {
         result.push_back(meeting);
     }
     response.send() << result;
@@ -35,7 +35,7 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
         auto &storage = GetMeetingDAO();
         storage.Save(meeting);
         response.send() << json(meeting);
-    } catch (json::exception &e) {
+    } catch (const json::exception &e) {
         response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST, "Ошибки в параметрах встречи");
         response.send();
     }
@@ -68,10 +68,7 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
     auto &meetings = GetMeetingDAO();
     meeting.id = m_id;
 
-    auto session = SqliteSessionFactory::getInstance();
-    bool hasMeeting = meetings.HasEntity(m_id, session);
-    session.close();
-    if (!hasMeeting){
+    if (!meetings.HasEntity(m_id)){
         response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND, "Такая встреча отсутствует");
         response.send();
         return;
