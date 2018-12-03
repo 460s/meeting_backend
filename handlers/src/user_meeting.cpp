@@ -140,12 +140,8 @@ public:
 			into(meeting.published),
 			range(0, 1); //  iterate over result set one row at a time
 
-
-		while (!select.done()) {
-			select.execute();
-			if (meeting.name != "") {
-				list.push_back(meeting);
-			}
+		while (!select.done() && select.execute()) {
+			list.push_back(meeting);
 		}
 		return list;
 	}
