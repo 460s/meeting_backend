@@ -5,18 +5,15 @@
 #include <handlers.hpp>
 #include <handlers/error.hpp>
 #include <handlers/factory.hpp>
+#include <regex>
 
 namespace handlers {
-
-Poco::RegularExpression regexp_user_meeting_id("/user/meeting/(\\d+)",
-                                               Poco::RegularExpression::RE_ANCHORED);
 
 HTTPRequestHandler *Factory::GetMethodHandlers(const std::string &uri) const {
 	if (uri == "/user/meeting") {
 		return new UserMeetingList();
-	}
-	if (regexp_user_meeting_id.match(uri)) {
-		return new UserMeetingGet();
+	} else if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+		return new UserMeetingRead(std::stoi(m[1]));
 	}
 	return nullptr;
 }
@@ -28,16 +25,16 @@ HTTPRequestHandler *Factory::PostMethodHandlers(const std::string &uri) const {
 	return nullptr;
 }
 
-HTTPRequestHandler *Factory::DeleteMethodHandlers(const std::string &uri) const {
-	if (regexp_user_meeting_id.match(uri)) {
-		return new UserMeetingDelete();
+HTTPRequestHandler *Factory::PatchMethodHandlers(const std::string &uri) const {
+	if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+		return new UserMeetingUpdate(std::stoi(m[1]));
 	}
 	return nullptr;
 }
 
-HTTPRequestHandler *Factory::PatchMethodHandlers(const std::string &uri) const {
-	if (regexp_user_meeting_id.match(uri)) {
-		return new UserMeetingPatch();
+HTTPRequestHandler *Factory::DeleteMethodHandlers(const std::string &uri) const {
+	if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+		return new UserMeetingDelete(std::stoi(m[1]));
 	}
 	return nullptr;
 }
@@ -52,11 +49,12 @@ Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HT
 		result = GetMethodHandlers(uri);
 	} else if (method == HTTPRequest::HTTP_POST) {
 		result = PostMethodHandlers(uri);
-	} else if (method == HTTPRequest::HTTP_DELETE) {
-		result = DeleteMethodHandlers(uri);
 	} else if (method == HTTPRequest::HTTP_PATCH) {
 		result = PatchMethodHandlers(uri);
+	} else if (method == HTTPRequest::HTTP_DELETE) {
+		result = DeleteMethodHandlers(uri);
 	}
+
 	if (result == nullptr) {
 		return new Error(Poco::Net::HTTPResponse::HTTP_BAD_REQUEST, "Wrong endpoint " + uri);
 	}

@@ -1,10 +1,17 @@
+#include "Poco/Data/Session.h"
+#include "Poco/Data/SQLite/Connector.h"
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/ServerSocketImpl.h>
 #include <handlers/factory.hpp>
 #include <iostream>
+#include <vector>
 #include <server.hpp>
 
 namespace {
+
+using namespace Poco::Data::Keywords;
+using Poco::Data::Session;
+using Poco::Data::Statement;
 
 using Poco::Net::Socket;
 
@@ -28,7 +35,7 @@ public:
 
 } // anonymous namespace
 
-int Server::main(const std::vector<std::string> & /*args*/) {
+int Server::main(const std::vector<std::string> & args) {
 	auto *parameters = new Poco::Net::HTTPServerParams();
 	parameters->setTimeout(10000);
 	parameters->setMaxQueued(100);
@@ -37,6 +44,16 @@ int Server::main(const std::vector<std::string> & /*args*/) {
 	const Poco::Net::ServerSocket socket(ServerSocket("127.0.0.1", 8080));
 
 	Poco::Net::HTTPServer server(new handlers::Factory(), socket, parameters);
+
+	Poco::Data::SQLite::Connector::registerConnector();
+	Session session("SQLite", "sample.db");
+	session << "DROP TABLE IF EXISTS meeting;", now;
+	session << "CREATE TABLE meeting ("
+		<< "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+		<< "name TEXT UNIQUE NOT NULL," 
+		<< "description TEXT NOT NULL, " 
+		<< "address TEXT NOT NULL, " 
+		<< "published INTEGER NOT NULL);", now;
 
 	server.start();
 	waitForTerminationRequest();

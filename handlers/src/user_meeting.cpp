@@ -5,6 +5,7 @@
 #include <handlers.hpp>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <optional>
 
 namespace handlers {
 
@@ -13,7 +14,7 @@ extern Poco::RegularExpression regexp_user_meeting_id;
 using nlohmann::json;
 
 struct Meeting {
-	int id;
+	std::optional<int> id;
 	std::string name;
 	std::string description;
 	std::string address;
@@ -27,7 +28,7 @@ struct Meeting {
 
 void to_json(json &j, const Meeting &m) {
 	j = json{
-	    {"id", m.id},
+	    {"id", m.id.value()},
 	    {"name", m.name},
 	    {"description", m.description},
 	    {"address", m.address},
@@ -55,33 +56,22 @@ class Storage {
 public:
 	using MeetingList = std::vector<Meeting>;
 	virtual void Save(Meeting &meeting) = 0;
-	virtual void Save(Meeting &meeting, const int &id) = 0;
-	virtual bool Get(const int &id, Meeting &meeting) = 0;
-	virtual bool Delete(const int &id) = 0;
 	virtual MeetingList GetList() = 0;
+	virtual std::optional<Meeting> Get(int id) = 0;
+	virtual bool Delete(int id) = 0;
 	virtual ~Storage() {}
 };
 
 class MapStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
-		int id = m_size++;
-		meeting.id = id;
-		m_meetings[id] = meeting;
-	}
-	void Save(Meeting &meeting, const int &id) override {
-		m_meetings[id] = meeting;
-	}
-	bool Get(const int &id, Meeting &meeting) override {
-		try {
-			meeting = m_meetings.at(id);
-			return true;
-		} catch (const std::out_of_range &oor) {
-			return false;
+		if (meeting.id.has_value()) {
+			m_meetings[meeting.id.value()] = meeting;
+		} else {
+			int id = m_meetings.size();
+			meeting.id = id;
+			m_meetings[id] = meeting;
 		}
-	}
-	bool Delete(const int &id) override {
-		return m_meetings.erase(id);
 	}
 	Storage::MeetingList GetList() override {
 		Storage::MeetingList list;
@@ -90,11 +80,28 @@ public:
 		}
 		return list;
 	}
+	std::optional<Meeting> Get(int id) override {
+		if (MeetingInMap(id)) {
+			return m_meetings[id];
+		}
+		return std::optional<Meeting>();
+	}
+	bool Delete(int id) override {
+		if (MeetingInMap(id)) {
+			m_meetings.erase(id);
+			return true;
+		}
+		return false;
+	}
 
 private:
 	using MeetingMap = std::map<int, Meeting>;
 	MeetingMap m_meetings;
-	int m_size = 0;
+
+	bool MeetingInMap(int id) const {
+		auto meeting_ptr = m_meetings.find(id);
+		return meeting_ptr != m_meetings.end();
+	}
 };
 
 Storage &GetStorage() {
@@ -102,14 +109,7 @@ Storage &GetStorage() {
 	return storage;
 }
 
-int extractMeetingId(const std::string &uri) {
-	// no-throw guarantee if called from proper handler
-	std::vector<std::string> match;
-	regexp_user_meeting_id.split(uri, match);
-	return Poco::NumberParser::parse(match[1]);
-}
-
-void UserMeetingList::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	auto &storage = GetStorage();
 
 	nlohmann::json result = nlohmann::json::array();
@@ -121,22 +121,7 @@ void UserMeetingList::handleRequest(Poco::Net::HTTPServerRequest &request, Poco:
 	response.send() << result;
 }
 
-void UserMeetingGet::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	auto &storage = GetStorage();
-
-	int id = extractMeetingId(request.getURI());
-	Meeting meeting;
-	if (!storage.Get(id, meeting)) {
-		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
-		response.send();
-		return;
-	}
-
-	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
-	response.send() << json(meeting);
-}
-
-void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	nlohmann::json j = nlohmann::json::parse(request.stream());
 	if (j.is_discarded()) {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
@@ -160,47 +145,38 @@ void UserMeetingCreate::handleRequest(Poco::Net::HTTPServerRequest &request, Poc
 	response.send() << json(meeting);
 }
 
-void UserMeetingDelete::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	auto &storage = GetStorage();
-
-	int id = extractMeetingId(request.getURI());
-	if (!storage.Delete(id)) {
-		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
-		response.send();
-		return;
+void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+	//response.setContentType("application/json");
+	auto &meetings = GetStorage();
+	auto meeting = meetings.Get(m_id);
+	if (meeting.has_value()) {
+		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK);
+		response.send() << json(meeting.value());
 	}
 
-	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT);
+	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 	response.send();
 }
 
-void UserMeetingPatch::handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	nlohmann::json j = nlohmann::json::parse(request.stream());
-	if (j.is_discarded()) {
-		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
-		response.send() << "Bad meeting JSON";
-	}
-
-	auto &storage = GetStorage();
-
-	int id = extractMeetingId(request.getURI());
-	Meeting meeting;
-	try {
-		int j_id = j.at("id");
-		if (j_id != id) {
-			throw json::other_error::create(501, "id mismatch");
-		}
-		meeting = j;
-	} catch (json::exception) {
-		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
-		response.send() << "Bad meeting parameters";
-		return;
-	}
-
-	storage.Save(meeting, id);
-
+void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK);
+	auto body = nlohmann::json::parse(request.stream());
+	auto &meetings = GetStorage();
+	Meeting meeting = body;
+	meeting.id = m_id;
+	meetings.Save(meeting);
+
 	response.send() << json(meeting);
+}
+
+void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+	auto &meetings = GetStorage();
+	if (meetings.Delete(m_id)) {
+		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT);
+	} else {
+		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
+	}
+	response.send();
 }
 
 } // namespace handlers
