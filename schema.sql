@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS meeting;
+
+CREATE TABLE meeting (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE NOT NULL,
+  description TEXT NOT NULL,
+  address TEXT NOT NULL,
+  published INTEGER NOT NULL
+);
