@@ -1,3 +1,6 @@
+#include "Poco/Data/RecordSet.h"
+#include "Poco/Data/Session.h"
+#include "Poco/Data/TypeHandler.h"
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <Poco/NumberParser.h>
@@ -110,8 +113,94 @@ private:
 	}
 };
 
+using namespace Poco::Data::Keywords;
+using Poco::Data::RecordSet;
+using Poco::Data::Session;
+using Poco::Data::Statement;
+
+class SqliteStorage : public Storage {
+public:
+	SqliteStorage(const std::string &path) : m_session("SQLite", path) {}
+
+	void Save(Meeting &meeting) override {
+		// std::cerr << "Save() start" << std::endl;
+		if (meeting.id.has_value()) {
+			// std::cerr << "Save() update" << std::endl;
+			m_session << R"(UPDATE meeting 
+				SET name = :name, description = :description, 
+					address = :address, published = :published
+				WHERE id = :id
+				)",
+				use(meeting.name), use(meeting.description),
+				use(meeting.address), use(meeting.published),
+				use(meeting.id.value()),
+				now;
+		} else {
+			// std::cerr << "Save() insert" << std::endl;
+			m_session << R"(INSERT INTO meeting 
+				(name, description, address, published)
+				VALUES (:name, :description, :address, :published)
+				)",
+				use(meeting.name), use(meeting.description),
+				use(meeting.address), use(meeting.published),
+				now;
+		}
+	}
+	Storage::MeetingList GetList() override {
+		// std::cerr << "GetList() start" << std::endl;
+		Storage::MeetingList list;
+		Statement stmt = (m_session << "SELECT id, name, description, address, published FROM meeting;",
+							limit(50));
+		while (!stmt.done()) {
+			stmt.execute();
+		}
+		RecordSet rs(stmt);
+
+		Meeting meeting;
+		// std::cerr << "GetList() got " << rs.rowCount() << std::endl;
+		for (RecordSet::Iterator it = rs.begin(); it != rs.end(); ++it) {
+			// std::cout << (*it) << " ";
+			// std::cerr << (*it)["id"].convert<int>() << std::endl;
+			meeting.id = (*it)["id"].convert<int>();
+			meeting.name = (*it)["name"].convert<std::string>();
+			meeting.description = (*it)["description"].convert<std::string>();
+			meeting.address = (*it)["address"].convert<std::string>();
+			meeting.published = (*it)["published"].convert<bool>();
+			list.push_back(meeting);
+		}
+		return list;
+	}
+	std::optional<Meeting> Get(int id) override {
+		// std::cerr << "Get() start" << std::endl;
+		Meeting meeting;
+		Poco::Nullable<int> get_id = 0;
+		Statement stmt = (m_session << "SELECT id, name, description, address, published FROM meeting",
+							into(get_id),
+							into(meeting.name), into(meeting.description),
+							into(meeting.address), into(meeting.published),
+							limit(1));
+		stmt.execute();
+		if (meeting.id.has_value()) {
+			meeting.id = get_id.value();
+			return std::optional<Meeting>(meeting);
+		}
+		return std::optional<Meeting>();
+	
+	}
+	bool Delete(int id) override {
+		// std::cerr << "Delete() start" << std::endl;
+		if (Get(id).has_value()) {
+			m_session << "DELETE FROM meeting WHERE id = :id", use(id), now;
+		}
+		return false;
+	}
+
+private:
+	Session m_session;
+};
+
 Storage &GetStorage() {
-	static MapStorage storage;
+	static SqliteStorage storage("sample.db");
 	return storage;
 }
 
@@ -145,7 +234,13 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 		return;
 	}
 
-	storage.Save(meeting);
+	try {
+		storage.Save(meeting);
+	} catch (Poco::Exception &exc) {
+		std::cerr << exc.displayText() << std::endl;
+		std::cerr.flush();
+		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
+	}
 
 	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_CREATED);
 	response.send() << json(meeting);
@@ -170,8 +265,14 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 	auto &meetings = GetStorage();
 	Meeting meeting = body;
 	meeting.id = m_id;
-	meetings.Save(meeting);
 
+	try {
+		meetings.Save(meeting);
+	} catch (Poco::Exception &exc) {
+		std::cerr << exc.displayText() << std::endl;
+		std::cerr.flush();
+		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
+	}
 	response.send() << json(meeting);
 }
 

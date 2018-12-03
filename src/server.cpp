@@ -46,14 +46,17 @@ int Server::main(const std::vector<std::string> & args) {
 	Poco::Net::HTTPServer server(new handlers::Factory(), socket, parameters);
 
 	Poco::Data::SQLite::Connector::registerConnector();
-	Session session("SQLite", "sample.db");
-	session << "DROP TABLE IF EXISTS meeting;", now;
-	session << "CREATE TABLE meeting ("
-		<< "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-		<< "name TEXT UNIQUE NOT NULL," 
-		<< "description TEXT NOT NULL, " 
-		<< "address TEXT NOT NULL, " 
-		<< "published INTEGER NOT NULL);", now;
+
+	if (std::find(std::begin(args), std::end(args), "db-init") != std::end(args)) {
+		Session session("SQLite", "sample.db");
+		session << "DROP TABLE IF EXISTS meeting;", now;
+		session << R"(CREATE TABLE meeting (
+	        id INTEGER PRIMARY KEY AUTOINCREMENT
+			name TEXT UNIQUE NOT NULL
+			description TEXT NOT NULL
+			address TEXT NOT NULL
+			published INTEGER NOT NULL);)", now;
+	}
 
 	server.start();
 	waitForTerminationRequest();
