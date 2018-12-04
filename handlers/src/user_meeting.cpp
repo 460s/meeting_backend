@@ -103,23 +103,23 @@ public:
 			Statement update(m_session);
 			auto published = b2i(meeting.published);
 			update << "UPDATE meeting SET "
-			          "name=?, description=?, address=?, published=? "
-			          "WHERE id=?",
-			    use(meeting.name),
-			    use(meeting.description),
-			    use(meeting.address),
-			    use(published),
-			    use(meeting.id.value()),
-			    now;
+					"name=?, description=?, address=?, published=? "
+					"WHERE id=?",
+				use(meeting.name),
+				use(meeting.description),
+				use(meeting.address),
+				use(published),
+				use(meeting.id.value()),
+				now;
 		} else {
 			Statement insert(m_session);
 			int published = b2i(meeting.published);
 			insert << "INSERT INTO meeting (name, description, address, published) VALUES(?, ?, ?, ?)",
-			    use(meeting.name),
-			    use(meeting.description),
-			    use(meeting.address),
-			    use(published),
-			    now;
+				use(meeting.name),
+				use(meeting.description),
+				use(meeting.address),
+				use(published),
+				now;
 
 			Statement select(m_session);
 			int id = 0;
@@ -154,13 +154,13 @@ public:
 			Statement select(m_session);
 			int tmp_id = 0;
 			select << "SELECT id, name, description, address, published FROM meeting WHERE id=?",
-			    use(id),
-			    into(tmp_id),
-			    into(meeting.name),
-			    into(meeting.description),
-			    into(meeting.address),
-			    into(meeting.published),
-			    now;
+				use(id),
+				into(tmp_id),
+				into(meeting.name),
+				into(meeting.description),
+				into(meeting.address),
+				into(meeting.published),
+				now;
 			meeting.id = tmp_id;
 			return meeting;
 		}

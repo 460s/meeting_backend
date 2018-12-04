@@ -29,8 +29,6 @@ int Server::main(const std::vector<std::string> &args) {
 	socket.bind(socket_address, true, false);
 	socket.listen(100);
 
-	Poco::Data::SQLite::Connector::registerConnector();
-
 	Poco::Net::HTTPServer server(new handlers::Factory(), socket, parameters);
 
 	server.start();
