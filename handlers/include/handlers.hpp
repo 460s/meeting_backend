@@ -1,8 +1,10 @@
 #pragma once
 
+#include <Poco/Logger.h>
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <nlohmann/json.hpp>
+#include <loggers.hpp>
 
 // #define REGISTER_HANDLER(name) \
 //     class name: public Poco::Net::HTTPRequestHandler { \
@@ -19,6 +21,15 @@ class RestHandler : public Poco::Net::HTTPRequestHandler {
 			nlohmann::json result;
 			result["error"] = e.what();
 			response.send() << result;
+
+			std::string msg = "error - ";
+			msg += e.what();
+
+			Poco::Logger &error_logger = GetLoggers().getErrorLogger();
+			error_logger.information(msg);
+
+			Poco::Logger &http_response_logger = GetLoggers().getHttpResponseLogger();
+			http_response_logger.information("sending response(text - " + msg);
 		}
 	}
 
@@ -26,18 +37,18 @@ class RestHandler : public Poco::Net::HTTPRequestHandler {
 };
 
 #define REGISTER_HANDLER(name) \
-    class name : public RestHandler { \
-    void HandleRestRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override; \
-}
+	class name : public RestHandler { \
+		void HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) override; \
+	}
 
 #define REGISTER_HANDLER_WITH_ID(name) \
-    class name : public RestHandler { \
-    public: \
-      name(int id) : m_id(id) {} \
-      void HandleRestRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override; \
-    private: \
-      int m_id; \
-}
+	class name : public RestHandler { \
+	public: \
+		name(int id) : m_id(id) {} \
+		void HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) override; \
+	private: \
+		int m_id; \
+	}
 
 namespace handlers {
 
@@ -51,4 +62,4 @@ REGISTER_HANDLER_WITH_ID(UserMeetingUpdate);
 
 REGISTER_HANDLER_WITH_ID(UserMeetingDelete);
 
-}
+} // namespace handlers

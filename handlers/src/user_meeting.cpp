@@ -1,11 +1,15 @@
 #include <Poco/Data/SQLite/Connector.h>
 #include <Poco/Data/Session.h>
+#include <Poco/Logger.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
-#include <handlers.hpp>
-#include <iostream>
 #include <nlohmann/json.hpp>
+
+#include <iostream>
 #include <optional>
+
+#include <loggers.hpp>
+#include <handlers.hpp>
 #include <sqlite.hpp>
 
 namespace handlers {
@@ -111,6 +115,10 @@ public:
 				use(published),
 				use(meeting.id.value()),
 				now;
+
+			std::string msg = "executed query update meeting with id = " + std::to_string(meeting.id.value());
+			Poco::Logger &logger = GetLoggers().getSqlLogger();
+			logger.information(msg);
 		} else {
 			Statement insert(m_session);
 			int published = b2i(meeting.published);
@@ -125,6 +133,10 @@ public:
 			int id = 0;
 			select << "SELECT last_insert_rowid()", into(id), now;
 			meeting.id = id;
+
+			std::string msg = "executed query insert meeting with id = " + std::to_string(id);
+			Poco::Logger &logger = GetLoggers().getSqlLogger();
+			logger.information(msg);
 		}
 	}
 
@@ -140,6 +152,8 @@ public:
 			into(meeting.published),
 			range(0, 1); //  iterate over result set one row at a time
 
+		Poco::Logger &logger = GetLoggers().getSqlLogger();
+		logger.information("executed query get meeting list");
 		while (!select.done() && select.execute()) {
 			list.push_back(meeting);
 		}
@@ -162,6 +176,11 @@ public:
 				into(meeting.published),
 				now;
 			meeting.id = tmp_id;
+
+			std::string msg = "executed query select meeting with id = " + std::to_string(id);
+			Poco::Logger &logger = GetLoggers().getSqlLogger();
+			logger.information(msg);
+
 			return meeting;
 		}
 		return std::nullopt;
@@ -169,6 +188,11 @@ public:
 
 	bool Delete(int id) override {
 		m_session << "DELETE FROM meeting WHERE id=?", use(id), now;
+
+		//std::string msg = "executed query delete meeting with id = " + std::to_string(id);
+		Poco::Logger &logger = GetLoggers().getSqlLogger();
+		logger.information("executed query delete meeting with id = " + std::to_string(id));
+
 		return true;
 	}
 
@@ -189,10 +213,13 @@ void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, P
 	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 	auto &storage = GetStorage();
 	nlohmann::json result = nlohmann::json::array();
-	for (const auto& meeting : storage.GetList()) {
+	for (const auto &meeting : storage.GetList()) {
 		result.push_back(meeting);
 	}
 	response.send() << result;
+
+	Poco::Logger &logger = GetLoggers().getHttpResponseLogger();
+	logger.information("sending response(code - HTTP_OK, body - meeting list)");
 }
 
 void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
@@ -203,6 +230,9 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 	storage.Save(meeting);
 
 	response.send() << json(meeting);
+
+	Poco::Logger &logger = GetLoggers().getHttpResponseLogger();
+	logger.information("sending response(code - HTTP_OK, body - new meeting)");
 }
 
 void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
@@ -211,11 +241,17 @@ void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, P
 	if (meeting.has_value()) {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK);
 		response.send() << json(meeting.value());
+
+		Poco::Logger &logger = GetLoggers().getHttpResponseLogger();
+		logger.information("sending response(code - HTTP_OK, body - meeting with id)");
 		return;
 	}
 
 	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 	response.send();
+
+	Poco::Logger &logger = GetLoggers().getHttpResponseLogger();
+	logger.information("sending response(code - HTTP_NOT_FOUND)");
 }
 
 void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
@@ -228,18 +264,27 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 		new_meeting.id = m_id;
 		meetings.Save(new_meeting);
 		response.send() << json(new_meeting);
+
+		Poco::Logger &logger = GetLoggers().getHttpResponseLogger();
+		logger.information("sending response(code - HTTP_OK, body - updated meeting)");
 		return;
 	}
 
 	response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 	response.send();
+
+	Poco::Logger &logger = GetLoggers().getHttpResponseLogger();
+	logger.information("sending response(code - HTTP_NOT_FOUND)");
 }
 
 void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	auto &meetings = GetStorage();
+	Poco::Logger &logger = GetLoggers().getHttpResponseLogger();
 	if (meetings.Delete(m_id)) {
+		logger.information("sending response(code - HTTP_NO_CONTENT)");
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT);
 	} else {
+		logger.information("sending response(code - HTTP_NOT_FOUND)");
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 	}
 	response.send();

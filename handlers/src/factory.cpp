@@ -1,3 +1,4 @@
+#include <Poco/Logger.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <handlers.hpp>
 #include <handlers/error.hpp>
@@ -42,6 +43,10 @@ Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HT
 	Poco::Net::HTTPRequestHandler *result = nullptr;
 	const auto method = request.getMethod();
 	const auto uri = request.getURI();
+
+	Poco::Logger &request_logger = GetLoggers().getHttpRequestLogger();
+	request_logger.information("received request(method - " + method + ", uri - " + uri + ")");
+
 	if (method == HTTPRequest::HTTP_GET) {
 		result = GetMethodHandlers(uri);
 	} else if (method == HTTPRequest::HTTP_POST) {
@@ -53,6 +58,8 @@ Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HT
 	}
 
 	if (result == nullptr) {
+		Poco::Logger &response_logger = GetLoggers().getHttpResponseLogger();
+		response_logger.information("sending response(code - HTTP_BAD_REQUEST, text - wrong endpoint " + uri + ")");
 		return new Error(Poco::Net::HTTPResponse::HTTP_BAD_REQUEST, "Wrong endpoint " + uri);
 	}
 	return result;
