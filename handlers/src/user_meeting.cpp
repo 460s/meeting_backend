@@ -49,7 +49,7 @@ public:
 	virtual MeetingList GetList() = 0;
 	virtual std::optional<Meeting> Get(int id) = 0;
 	virtual bool Delete(int id) = 0;
-	virtual ~Storage() {}
+	virtual ~Storage() = default;
 };
 
 class MapStorage : public Storage {
@@ -65,7 +65,7 @@ public:
 	}
 	Storage::MeetingList GetList() override {
 		Storage::MeetingList list;
-		for (auto [id, meeting] : m_meetings) {
+		for (const auto &[id, meeting] : m_meetings) {
 			list.push_back(meeting);
 		}
 		return list;
@@ -209,7 +209,7 @@ Storage &GetStorage() {
 	return storage;
 }
 
-void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &/*request*/, Poco::Net::HTTPServerResponse &response) {
 	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 	auto &storage = GetStorage();
 	nlohmann::json result = nlohmann::json::array();
@@ -235,7 +235,7 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 	logger.information("sending response(code - HTTP_OK, body - new meeting)");
 }
 
-void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &/*request*/, Poco::Net::HTTPServerResponse &response) {
 	auto &meetings = GetStorage();
 	auto meeting = meetings.Get(m_id);
 	if (meeting.has_value()) {
@@ -277,7 +277,7 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 	logger.information("sending response(code - HTTP_NOT_FOUND)");
 }
 
-void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &/*request*/, Poco::Net::HTTPServerResponse &response) {
 	auto &meetings = GetStorage();
 	Poco::Logger &logger = GetLoggers().getHttpResponseLogger();
 	if (meetings.Delete(m_id)) {

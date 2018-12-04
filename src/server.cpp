@@ -1,12 +1,12 @@
 #include <Poco/AutoPtr.h>
+#include <Poco/Data/SQLite/Connector.h>
+#include <Poco/Data/Session.h>
 #include <Poco/FileChannel.h>
 #include <Poco/FormattingChannel.h>
 #include <Poco/Logger.h>
-#include <Poco/PatternFormatter.h>
-#include <Poco/Data/SQLite/Connector.h>
-#include <Poco/Data/Session.h>
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/ServerSocketImpl.h>
+#include <Poco/PatternFormatter.h>
 
 #include <fstream>
 #include <iostream>

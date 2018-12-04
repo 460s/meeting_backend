@@ -41,8 +41,8 @@ Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HT
 	using Poco::Net::HTTPRequest;
 
 	Poco::Net::HTTPRequestHandler *result = nullptr;
-	const auto method = request.getMethod();
-	const auto uri = request.getURI();
+	const auto &method = request.getMethod();
+	const auto &uri = request.getURI();
 
 	Poco::Logger &request_logger = GetLoggers().getHttpRequestLogger();
 	request_logger.information("received request(method - " + method + ", uri - " + uri + ")");
