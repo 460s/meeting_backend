@@ -3,6 +3,7 @@
 #include <handlers/error.hpp>
 #include <handlers/factory.hpp>
 #include <regex>
+#include <logger_singleton.hpp>
 
 namespace handlers {
 
@@ -39,9 +40,13 @@ HTTPRequestHandler *Factory::DeleteMethodHandlers(const std::string &uri) const 
 Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HTTPServerRequest &request) {
 	using Poco::Net::HTTPRequest;
 
+	auto logger = Logger::getInstance()->getLogger();
 	Poco::Net::HTTPRequestHandler *result = nullptr;
 	const auto method = request.getMethod();
 	const auto uri = request.getURI();
+
+	logger->information("Registred "+method+" query on path "+uri);
+
 	if (method == HTTPRequest::HTTP_GET) {
 		result = GetMethodHandlers(uri);
 	} else if (method == HTTPRequest::HTTP_POST) {
@@ -53,6 +58,7 @@ Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HT
 	}
 
 	if (result == nullptr) {
+		logger->error("This query relates to wrong endpoint");
 		return new Error(Poco::Net::HTTPResponse::HTTP_BAD_REQUEST, "Wrong endpoint " + uri);
 	}
 	return result;
