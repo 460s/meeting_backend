@@ -4,6 +4,26 @@ Segmentation fault - неверная работа с памятью, обращ
 Exception - исключение, ошибка созданная вами или используемой библиотекой.
 Неожиданное поведение - запускаете, а программа не делает, то что нужно.
 
+## Пример undefined behaviour.
+```
+$ cat undef.cpp 
+#include <iostream>
+int main() {
+	int i = 5;
+	i = ++i + ++i; // инкремент может быть применен в любой удобный для компилятора момент
+	std::cout << i << std::endl;
+}
+$ clang++ undef.cpp && ./a.out 
+undef.cpp:4:6: warning: multiple unsequenced modifications to 'i' [-Wunsequenced]
+        i = ++i + ++i;
+            ^     ~~
+1 warning generated.
+13
+$ g++ undef.cpp && ./a.out
+14
+```
+Заметьте, что clang ругается, а gcc нет.
+
 ## Отладка
 * coredump
   - ulimit -c unlimited
