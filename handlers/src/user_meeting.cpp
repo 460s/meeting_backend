@@ -1,12 +1,13 @@
-#include <iostream>
+#include "Poco/Logger.h"
+#include <Poco/Data/SQLite/Connector.h>
+#include <Poco/Data/Session.h>
+#include <Poco/Net/HTTPServerRequest.h>
+#include <Poco/Net/HTTPServerResponse.h>
 #include <handlers.hpp>
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <sqlite.hpp>
-#include <Poco/Data/Session.h>
-#include <Poco/Data/SQLite/Connector.h>
-#include <Poco/Net/HTTPServerRequest.h>
-#include <Poco/Net/HTTPServerResponse.h>
 
 namespace handlers {
 
@@ -90,11 +91,12 @@ private:
 	}
 };
 
+using Poco::Data::Statement;
 using Poco::Data::Keywords::into;
 using Poco::Data::Keywords::now;
 using Poco::Data::Keywords::range;
 using Poco::Data::Keywords::use;
-using Poco::Data::Statement;
+using Poco::Logger;
 
 class SqliteStorage : public Storage {
 public:
@@ -105,26 +107,28 @@ public:
 			update << "UPDATE meeting SET "
 			          "name=?, description=?, address=?, published=? "
 			          "WHERE id=?",
-				use(meeting.name),
-				use(meeting.description),
-				use(meeting.address),
-				use(published),
-				use(meeting.id.value()),
-				now;
+			    use(meeting.name),
+			    use(meeting.description),
+			    use(meeting.address),
+			    use(published),
+			    use(meeting.id.value()),
+			    now;
+			Logger::get("SampleLogger").information("Update the meeting");
 		} else {
 			Statement insert(m_session);
 			int published = b2i(meeting.published);
 			insert << "INSERT INTO meeting (name, description, address, published) VALUES(?, ?, ?, ?)",
-				use(meeting.name),
-				use(meeting.description),
-				use(meeting.address),
-				use(published),
-				now;
+			    use(meeting.name),
+			    use(meeting.description),
+			    use(meeting.address),
+			    use(published),
+			    now;
 
 			Statement select(m_session);
 			int id = 0;
 			select << "SELECT last_insert_rowid()", into(id), now;
 			meeting.id = id;
+			Logger::get("SampleLogger").information("Save the meeting");
 		}
 	}
 
@@ -133,16 +137,17 @@ public:
 		Meeting meeting;
 		Statement select(m_session);
 		select << "SELECT id, name, description, address, published FROM meeting",
-			into(meeting.id.emplace()),
-			into(meeting.name),
-			into(meeting.description),
-			into(meeting.address),
-			into(meeting.published),
-			range(0, 1); //  iterate over result set one row at a time
+		    into(meeting.id.emplace()),
+		    into(meeting.name),
+		    into(meeting.description),
+		    into(meeting.address),
+		    into(meeting.published),
+		    range(0, 1); //  iterate over result set one row at a time
 
 		while (!select.done() && select.execute()) {
 			list.push_back(meeting);
 		}
+		Logger::get("SampleLogger").information("Get list of meetings");
 		return list;
 	}
 
@@ -154,14 +159,15 @@ public:
 			Statement select(m_session);
 			int tmp_id = 0;
 			select << "SELECT id, name, description, address, published FROM meeting WHERE id=?",
-				use(id),
-				into(tmp_id),
-				into(meeting.name),
-				into(meeting.description),
-				into(meeting.address),
-				into(meeting.published),
-				now;
+			    use(id),
+			    into(tmp_id),
+			    into(meeting.name),
+			    into(meeting.description),
+			    into(meeting.address),
+			    into(meeting.published),
+			    now;
 			meeting.id = tmp_id;
+			Logger::get("SampleLogger").information("Get meeting by id");
 			return meeting;
 		}
 		return std::nullopt;
@@ -169,11 +175,11 @@ public:
 
 	bool Delete(int id) override {
 		m_session << "DELETE FROM meeting WHERE id=?", use(id), now;
+		Logger::get("SampleLogger").information("Delete meeting");
 		return true;
 	}
 
 private:
-
 	Poco::Data::Session m_session{sqlite::TYPE_SESSION, sqlite::DB_PATH};
 
 	int b2i(bool b) {
