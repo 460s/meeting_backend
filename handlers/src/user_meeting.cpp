@@ -23,11 +23,11 @@ using nlohmann::json;
 // сериализация (маршалинг)
 void to_json(json &j, const Meeting &m) {
 	j = json{
-	    {"id", m.id.value()},
-	    {"name", m.name},
-	    {"description", m.description},
-	    {"address", m.address},
-	    {"published", m.published}};
+		{"id", m.id.value()},
+		{"name", m.name},
+		{"description", m.description},
+		{"address", m.address},
+		{"published", m.published}};
 }
 
 // десериализация (анмаршалинг, распаковка)
@@ -103,8 +103,8 @@ public:
 			Statement update(m_session);
 			auto published = b2i(meeting.published);
 			update << "UPDATE meeting SET "
-					"name=?, description=?, address=?, published=? "
-					"WHERE id=?",
+				"name=?, description=?, address=?, published=? "
+				"WHERE id=?",
 				use(meeting.name),
 				use(meeting.description),
 				use(meeting.address),
@@ -133,12 +133,12 @@ public:
 		Meeting meeting;
 		Statement select(m_session);
 		select << "SELECT id, name, description, address, published FROM meeting",
-		    into(meeting.id.emplace()),
-		    into(meeting.name),
-		    into(meeting.description),
-		    into(meeting.address),
-		    into(meeting.published),
-		    range(0, 1); //  iterate over result set one row at a time
+			into(meeting.id.emplace()),
+			into(meeting.name),
+			into(meeting.description),
+			into(meeting.address),
+			into(meeting.published),
+			range(0, 1); //  iterate over result set one row at a time
 
 		while (!select.done() && select.execute()) {
 			list.push_back(meeting);
