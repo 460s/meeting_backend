@@ -1,12 +1,13 @@
+#include "handlers.hpp"
 #include <iostream>
-#include <handlers.hpp>
+#include <logger.hpp>
 #include <nlohmann/json.hpp>
 #include <optional>
-#include <sqlite.hpp>
 #include <Poco/Data/Session.h>
 #include <Poco/Data/SQLite/Connector.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
+#include <sqlite.hpp>
 
 namespace handlers {
 
@@ -15,7 +16,7 @@ struct Meeting {
 	std::string name;
 	std::string description;
 	std::string address;
-	bool published;
+	bool published{false};
 };
 
 using nlohmann::json;
@@ -45,49 +46,7 @@ public:
 	virtual MeetingList GetList() = 0;
 	virtual std::optional<Meeting> Get(int id) = 0;
 	virtual bool Delete(int id) = 0;
-	virtual ~Storage() {}
-};
-
-class MapStorage : public Storage {
-public:
-	void Save(Meeting &meeting) override {
-		if (meeting.id.has_value()) {
-			m_meetings[meeting.id.value()] = meeting;
-		} else {
-			int id = m_meetings.size();
-			meeting.id = id;
-			m_meetings[id] = meeting;
-		}
-	}
-	Storage::MeetingList GetList() override {
-		Storage::MeetingList list;
-		for (auto [id, meeting] : m_meetings) {
-			list.push_back(meeting);
-		}
-		return list;
-	}
-	std::optional<Meeting> Get(int id) override {
-		if (MeetingInMap(id)) {
-			return m_meetings[id];
-		}
-		return std::optional<Meeting>();
-	}
-	bool Delete(int id) override {
-		if (MeetingInMap(id)) {
-			m_meetings.erase(id);
-			return true;
-		}
-		return false;
-	}
-
-private:
-	using MeetingMap = std::map<int, Meeting>;
-	MeetingMap m_meetings;
-
-	bool MeetingInMap(int id) const {
-		auto meeting_ptr = m_meetings.find(id);
-		return meeting_ptr != m_meetings.end();
-	}
+	virtual ~Storage() = default;
 };
 
 using Poco::Data::Keywords::into;
@@ -140,7 +99,7 @@ public:
 			into(meeting.published),
 			range(0, 1); //  iterate over result set one row at a time
 
-		while (!select.done() && select.execute()) {
+		while (!select.done() && select.execute() > 0) {
 			list.push_back(meeting);
 		}
 		return list;
@@ -186,13 +145,15 @@ Storage &GetStorage() {
 	return storage;
 }
 
-void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &/*request*/, Poco::Net::HTTPServerResponse &response) {
 	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
+
 	auto &storage = GetStorage();
 	nlohmann::json result = nlohmann::json::array();
 	for (auto meeting : storage.GetList()) {
 		result.push_back(meeting);
 	}
+	meeting::GetLogger().information("UserMeetingList: " + result.dump());
 	response.send() << result;
 }
 
@@ -206,7 +167,7 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 	response.send() << json(meeting);
 }
 
-void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &/*request*/, Poco::Net::HTTPServerResponse &response) {
 	auto &meetings = GetStorage();
 	auto meeting = meetings.Get(m_id);
 	if (meeting.has_value()) {
@@ -230,7 +191,7 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 	response.send() << json(meeting);
 }
 
-void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
+void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &/*request*/, Poco::Net::HTTPServerResponse &response) {
 	auto &meetings = GetStorage();
 	if (meetings.Delete(m_id)) {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT);

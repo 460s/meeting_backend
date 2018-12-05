@@ -16,6 +16,6 @@ conan_basic_setup()
 include_directories(include handlers/include ${CONAN_INCLUDE_DIRS})
 add_subdirectory(handlers)
 
-add_executable(${PROJECT_NAME} main.cpp src/server.cpp $<TARGET_OBJECTS:handlers>)
+add_executable(${PROJECT_NAME} main.cpp src/server.cpp src/logger.cpp $<TARGET_OBJECTS:handlers>)
 target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS})
 file(COPY schema.sql DESTINATION etc)

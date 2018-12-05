@@ -9,9 +9,11 @@ namespace handlers {
 HTTPRequestHandler *Factory::GetMethodHandlers(const std::string &uri) const {
 	if (uri == "/user/meeting") {
 		return new UserMeetingList();
-	} else if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+	}
+	if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
 		return new UserMeetingRead(std::stoi(m[1]));
 	}
+
 	return nullptr;
 }
 
@@ -40,8 +42,8 @@ Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HT
 	using Poco::Net::HTTPRequest;
 
 	Poco::Net::HTTPRequestHandler *result = nullptr;
-	const auto method = request.getMethod();
-	const auto uri = request.getURI();
+	const auto &method = request.getMethod();
+	const auto &uri = request.getURI();
 	if (method == HTTPRequest::HTTP_GET) {
 		result = GetMethodHandlers(uri);
 	} else if (method == HTTPRequest::HTTP_POST) {

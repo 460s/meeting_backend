@@ -1,6 +1,7 @@
 #include <fstream>
 #include <handlers/factory.hpp>
 #include <iostream>
+#include <logger.hpp>
 #include <Poco/Data/Session.h>
 #include <Poco/Data/SQLite/Connector.h>
 #include <Poco/Net/HTTPServer.h>
@@ -11,6 +12,8 @@
 using Poco::Data::Keywords::now;
 
 int Server::main(const std::vector<std::string> &args) {
+	meeting::GetLogger().information("Start Server");
+
 	Poco::Data::SQLite::Connector::registerConnector();
 	if (std::find(args.begin(), args.end(), "init-db") != args.end()) {
 		Poco::Data::Session session(sqlite::TYPE_SESSION, sqlite::DB_PATH);
