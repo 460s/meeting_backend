@@ -5,6 +5,7 @@
 #include <Poco/Net/HTTPServerResponse.h>
 #include <nlohmann/json.hpp>
 #include <loggers.hpp>
+#include <handlers/factory.hpp>
 
 // #define REGISTER_HANDLER(name) \
 //     class name: public Poco::Net::HTTPRequestHandler { \
@@ -16,6 +17,8 @@ class RestHandler : public Poco::Net::HTTPRequestHandler {
 	void handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) override {
 		response.setContentType("application/json");
 		try {
+			std::mutex &mutex = handlers::Factory::GetMutex();
+			std::lock_guard<std::mutex> l{mutex};
 			HandleRestRequest(request, response);
 		} catch (const std::exception &e) {
 			nlohmann::json result;

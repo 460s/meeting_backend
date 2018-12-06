@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <optional>
+#include <mutex>
 
 #include <loggers.hpp>
 #include <handlers.hpp>
@@ -19,7 +20,7 @@ struct Meeting {
 	std::string name;
 	std::string description;
 	std::string address;
-	bool published;
+	bool published{false};
 };
 
 using nlohmann::json;
@@ -103,6 +104,7 @@ using Poco::Data::Keywords::use;
 class SqliteStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
+		//std::lock_guard<std::mutex> l{m_mutex}; 
 		if (meeting.id.has_value()) {
 			Statement update(m_session);
 			auto published = b2i(meeting.published);
@@ -141,6 +143,8 @@ public:
 	}
 
 	Storage::MeetingList GetList() override {
+		//std::lock_guard<std::mutex> l{m_mutex};
+		i++;
 		Storage::MeetingList list;
 		Meeting meeting;
 		Statement select(m_session);
@@ -153,7 +157,7 @@ public:
 			range(0, 1); //  iterate over result set one row at a time
 
 		Poco::Logger &logger = GetLoggers().getSqlLogger();
-		logger.information("executed query get meeting list");
+		logger.information(std::to_string(i));
 		while (!select.done() && select.execute()) {
 			list.push_back(meeting);
 		}
@@ -161,6 +165,7 @@ public:
 	}
 
 	std::optional<Meeting> Get(int id) override {
+		//std::lock_guard<std::mutex> l{m_mutex}; 
 		int cnt = 0;
 		m_session << "SELECT COUNT(*) FROM meeting WHERE id=?", use(id), into(cnt), now;
 		if (cnt > 0) {
@@ -187,9 +192,9 @@ public:
 	}
 
 	bool Delete(int id) override {
+		//std::lock_guard<std::mutex> l{m_mutex};
 		m_session << "DELETE FROM meeting WHERE id=?", use(id), now;
 
-		//std::string msg = "executed query delete meeting with id = " + std::to_string(id);
 		Poco::Logger &logger = GetLoggers().getSqlLogger();
 		logger.information("executed query delete meeting with id = " + std::to_string(id));
 
@@ -198,6 +203,8 @@ public:
 
 private:
 	Poco::Data::Session m_session{sqlite::TYPE_SESSION, sqlite::DB_PATH};
+	//std::mutex m_mutex;
+	int i=0;
 
 	int b2i(bool b) {
 		return b ? 1 : 0;
@@ -211,6 +218,7 @@ Storage &GetStorage() {
 
 void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &/*request*/, Poco::Net::HTTPServerResponse &response) {
 	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
+
 	auto &storage = GetStorage();
 	nlohmann::json result = nlohmann::json::array();
 	for (const auto &meeting : storage.GetList()) {

@@ -1,5 +1,6 @@
 #pragma once
 #include <Poco/Net/HTTPRequestHandlerFactory.h>
+#include <mutex>
 
 namespace handlers {
 
@@ -13,6 +14,10 @@ private:
 	HTTPRequestHandler *DeleteMethodHandlers(const std::string &uri) const;
 
 	HTTPRequestHandler *createRequestHandler(const Poco::Net::HTTPServerRequest &request) override;
+
+	static std::mutex m_mutex;
+public:
+	static std::mutex &GetMutex();
 };
 
 } // namespace handlers

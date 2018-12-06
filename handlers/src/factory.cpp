@@ -4,15 +4,18 @@
 #include <handlers/error.hpp>
 #include <handlers/factory.hpp>
 #include <regex>
+#include <iostream>
 
 namespace handlers {
 
 HTTPRequestHandler *Factory::GetMethodHandlers(const std::string &uri) const {
 	if (uri == "/user/meeting") {
 		return new UserMeetingList();
-	} else if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+	}
+	if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
 		return new UserMeetingRead(std::stoi(m[1]));
 	}
+
 	return nullptr;
 }
 
@@ -63,6 +66,12 @@ Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HT
 		return new Error(Poco::Net::HTTPResponse::HTTP_BAD_REQUEST, "Wrong endpoint " + uri);
 	}
 	return result;
+}
+
+std::mutex Factory::m_mutex;
+
+std::mutex &Factory::GetMutex(){
+	return m_mutex;
 }
 
 } // namespace handlers

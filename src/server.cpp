@@ -1,5 +1,6 @@
 #include <Poco/AutoPtr.h>
 #include <Poco/Data/SQLite/Connector.h>
+#include <Poco/Data/SQLite/Utility.h>
 #include <Poco/Data/Session.h>
 #include <Poco/FileChannel.h>
 #include <Poco/FormattingChannel.h>
@@ -7,6 +8,9 @@
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/ServerSocketImpl.h>
 #include <Poco/PatternFormatter.h>
+#include <fstream>
+#include <handlers/factory.hpp>
+#include <iostream>
 
 #include <fstream>
 #include <iostream>
@@ -32,6 +36,8 @@ int Server::main(const std::vector<std::string> &args) {
 
 	Poco::Logger::root().setChannel(pFC);
 
+	Poco::Data::SQLite::Utility::setThreadMode(Poco::Data::SQLite::Utility::THREAD_MODE_SINGLE);
+	
 	if (std::find(args.begin(), args.end(), "init-db") != args.end()) {
 		Poco::Data::Session session(sqlite::TYPE_SESSION, sqlite::DB_PATH);
 		std::ifstream schema_stream(sqlite::SСHEMA_PATH);
@@ -45,7 +51,7 @@ int Server::main(const std::vector<std::string> &args) {
 	auto *parameters = new Poco::Net::HTTPServerParams();
 	parameters->setTimeout(10000);
 	parameters->setMaxQueued(100);
-	parameters->setMaxThreads(1);
+	parameters->setMaxThreads(2);
 
 	Poco::Net::SocketAddress socket_address("127.0.0.1:8080");
 	Poco::Net::ServerSocket socket;
