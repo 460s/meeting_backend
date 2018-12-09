@@ -1,6 +1,7 @@
 #include "handlers.hpp"
 #include <iostream>
 #include <logger.hpp>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <Poco/Data/Session.h>
@@ -58,27 +59,28 @@ using Poco::Data::Statement;
 class SqliteStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
+		std::lock_guard<std::mutex> l{m_mutex};
 		if (meeting.id.has_value()) {
 			Statement update(m_session);
 			auto published = b2i(meeting.published);
 			update << "UPDATE meeting SET "
 			          "name=?, description=?, address=?, published=? "
 			          "WHERE id=?",
-				use(meeting.name),
-				use(meeting.description),
-				use(meeting.address),
-				use(published),
-				use(meeting.id.value()),
-				now;
+			    use(meeting.name),
+			    use(meeting.description),
+			    use(meeting.address),
+			    use(published),
+			    use(meeting.id.value()),
+			    now;
 		} else {
 			Statement insert(m_session);
 			int published = b2i(meeting.published);
 			insert << "INSERT INTO meeting (name, description, address, published) VALUES(?, ?, ?, ?)",
-				use(meeting.name),
-				use(meeting.description),
-				use(meeting.address),
-				use(published),
-				now;
+			    use(meeting.name),
+			    use(meeting.description),
+			    use(meeting.address),
+			    use(published),
+			    now;
 
 			Statement select(m_session);
 			int id = 0;
@@ -88,16 +90,17 @@ public:
 	}
 
 	Storage::MeetingList GetList() override {
+		std::lock_guard<std::mutex> l{m_mutex};
 		Storage::MeetingList list;
 		Meeting meeting;
 		Statement select(m_session);
 		select << "SELECT id, name, description, address, published FROM meeting",
-			into(meeting.id.emplace()),
-			into(meeting.name),
-			into(meeting.description),
-			into(meeting.address),
-			into(meeting.published),
-			range(0, 1); //  iterate over result set one row at a time
+		    into(meeting.id.emplace()),
+		    into(meeting.name),
+		    into(meeting.description),
+		    into(meeting.address),
+		    into(meeting.published),
+		    range(0, 1); //  iterate over result set one row at a time
 
 		while (!select.done() && select.execute() > 0) {
 			list.push_back(meeting);
@@ -106,6 +109,7 @@ public:
 	}
 
 	std::optional<Meeting> Get(int id) override {
+		std::lock_guard<std::mutex> l{m_mutex};
 		int cnt = 0;
 		m_session << "SELECT COUNT(*) FROM meeting WHERE id=?", use(id), into(cnt), now;
 		if (cnt > 0) {
@@ -113,13 +117,13 @@ public:
 			Statement select(m_session);
 			int tmp_id = 0;
 			select << "SELECT id, name, description, address, published FROM meeting WHERE id=?",
-				use(id),
-				into(tmp_id),
-				into(meeting.name),
-				into(meeting.description),
-				into(meeting.address),
-				into(meeting.published),
-				now;
+			    use(id),
+			    into(tmp_id),
+			    into(meeting.name),
+			    into(meeting.description),
+			    into(meeting.address),
+			    into(meeting.published),
+			    now;
 			meeting.id = tmp_id;
 			return meeting;
 		}
@@ -127,11 +131,13 @@ public:
 	}
 
 	bool Delete(int id) override {
+		std::lock_guard<std::mutex> l{m_mutex};
 		m_session << "DELETE FROM meeting WHERE id=?", use(id), now;
 		return true;
 	}
 
 private:
+	std::mutex m_mutex;
 
 	Poco::Data::Session m_session{sqlite::TYPE_SESSION, sqlite::DB_PATH};
 
@@ -164,6 +170,7 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 	Meeting meeting = j;
 	storage.Save(meeting);
 
+	meeting::GetLogger().information("UserMeetingCreate: " + std::to_string(meeting.id.value()));
 	response.send() << json(meeting);
 }
 
@@ -172,6 +179,7 @@ void UserMeetingRead::HandleRestRequest(Poco::Net::HTTPServerRequest &/*request*
 	auto meeting = meetings.Get(m_id);
 	if (meeting.has_value()) {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_OK);
+		meeting::GetLogger().information("UserMeetingRead: " + std::to_string(m_id));
 		response.send() << json(meeting.value());
 		return;
 	}
@@ -187,7 +195,8 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 	Meeting meeting = body;
 	meeting.id = m_id;
 	meetings.Save(meeting);
-
+	
+	meeting::GetLogger().information("UserMeetingUpdate: " + std::to_string(meeting.id.value()));
 	response.send() << json(meeting);
 }
 
@@ -198,6 +207,7 @@ void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &/*reques
 	} else {
 		response.setStatusAndReason(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 	}
+	meeting::GetLogger().information("UserMeetingDelete: " + std::to_string(m_id));
 	response.send();
 }
 

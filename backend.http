@@ -1,0 +1,50 @@
+@host = localhost:8080
+# @createdAt = {{$datetime iso8601}}
+
+###
+// Получить meetings
+GET http://{{host}}/user/meeting HTTP/1.1
+Content-Type: application/json
+
+###
+// Получить meetings by id
+GET http://{{host}}/user/meeting/1 HTTP/1.1
+Content-Type: application/json
+
+###
+// Создать meeting
+POST http://{{host}}/user/meeting HTTP/1.1
+
+{
+  "name": "Встреча",
+  "description": "Описание 5",
+  "address": "Иркутск",
+  "published": true
+}
+
+###
+// Обновить meeting
+PATCH http://{{host}}/user/meeting/5 HTTP/1.1
+
+{
+  "name": "Перенесённая встреча",
+  "description": "Описание 2",
+  "address": "Новосибирск",
+  "published": true
+}
+
+###
+// Удалить meeting
+DELETE http://{{host}}/user/meeting/2 HTTP/1.1
+
+###
+curl -X GET http://127.0.0.1:8080/user/meeting - список встреч
+
+###
+curl -X POST -d '{"name": "Лекция 3"}' http://127.0.0.1:8080/user/meeting - создание встречи
+
+###
+curl -X PATCH -d '{"name": "Лекция 3", "description": "Поговорим о перзистенси"}' http://127.0.0.1:8080/user/meeting/1
+
+###
+curl -X DELETE -d http://127.0.0.1:8080/user/meeting/1 - удаление встречи
