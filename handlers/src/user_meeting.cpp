@@ -1,6 +1,5 @@
 #include <Poco/Data/SQLite/Connector.h>
 #include <Poco/Data/Session.h>
-#include <Poco/Logger.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <nlohmann/json.hpp>
@@ -53,48 +52,6 @@ public:
 	virtual ~Storage() = default;
 };
 
-class MapStorage : public Storage {
-public:
-	void Save(Meeting &meeting) override {
-		if (meeting.id.has_value()) {
-			m_meetings[meeting.id.value()] = meeting;
-		} else {
-			int id = m_meetings.size();
-			meeting.id = id;
-			m_meetings[id] = meeting;
-		}
-	}
-	Storage::MeetingList GetList() override {
-		Storage::MeetingList list;
-		for (const auto &[id, meeting] : m_meetings) {
-			list.push_back(meeting);
-		}
-		return list;
-	}
-	std::optional<Meeting> Get(int id) override {
-		if (MeetingInMap(id)) {
-			return m_meetings[id];
-		}
-		return std::optional<Meeting>();
-	}
-	bool Delete(int id) override {
-		if (MeetingInMap(id)) {
-			m_meetings.erase(id);
-			return true;
-		}
-		return false;
-	}
-
-private:
-	using MeetingMap = std::map<int, Meeting>;
-	MeetingMap m_meetings;
-
-	bool MeetingInMap(int id) const {
-		auto meeting_ptr = m_meetings.find(id);
-		return meeting_ptr != m_meetings.end();
-	}
-};
-
 using Poco::Data::Statement;
 using Poco::Data::Keywords::into;
 using Poco::Data::Keywords::now;
@@ -104,6 +61,7 @@ using Poco::Data::Keywords::use;
 class SqliteStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
+		std::lock_guard<std::mutex> lock{m_mutex};
 		if (meeting.id.has_value()) {
 			Statement update(m_session);
 			auto published = b2i(meeting.published);
@@ -117,8 +75,8 @@ public:
 				use(meeting.id.value()),
 				now;
 
-			i++;
-			std::string msg = "executed query №" + std::to_string(i) + " update meeting with id = " + 
+			m_count++;
+			std::string msg = "executed query №" + std::to_string(m_count) + " update meeting with id = " + 
 					std::to_string(meeting.id.value());
 			Poco::Logger &logger = GetLoggers().getSqlLogger();
 			logger.information(msg);
@@ -137,8 +95,8 @@ public:
 			select << "SELECT last_insert_rowid()", into(id), now;
 			meeting.id = id;
 
-			i++;
-			std::string msg = "executed query №" + std::to_string(i) + " insert meeting with id = " +
+			m_count++;
+			std::string msg = "executed query №" + std::to_string(m_count) + " insert meeting with id = " +
 					 std::to_string(id);
 			Poco::Logger &logger = GetLoggers().getSqlLogger();
 			logger.information(msg);
@@ -146,6 +104,7 @@ public:
 	}
 
 	Storage::MeetingList GetList() override {
+		std::lock_guard<std::mutex> lock{m_mutex};
 		Storage::MeetingList list;
 		Meeting meeting;
 		Statement select(m_session);
@@ -157,9 +116,9 @@ public:
 			into(meeting.published),
 			range(0, 1); //  iterate over result set one row at a time
 
-		i++;
+		m_count++;
 		Poco::Logger &logger = GetLoggers().getSqlLogger();
-		logger.information("executed query №" + std::to_string(i) + " select meeting list");
+		logger.information("executed query №" + std::to_string(m_count) + " select meeting list");
 		while (!select.done() && select.execute()) {
 			list.push_back(meeting);
 		}
@@ -167,6 +126,7 @@ public:
 	}
 
 	std::optional<Meeting> Get(int id) override {
+		std::lock_guard<std::mutex> lock{m_mutex};
 		int cnt = 0;
 		m_session << "SELECT COUNT(*) FROM meeting WHERE id=?", use(id), into(cnt), now;
 		if (cnt > 0) {
@@ -183,8 +143,8 @@ public:
 				now;
 			meeting.id = tmp_id;
 
-			i++;
-			std::string msg = "executed query №" + std::to_string(i) + " select meeting with id = " 
+			m_count++;
+			std::string msg = "executed query №" + std::to_string(m_count) + " select meeting with id = " 
 					+ std::to_string(id);
 			Poco::Logger &logger = GetLoggers().getSqlLogger();
 			logger.information(msg);
@@ -195,11 +155,12 @@ public:
 	}
 
 	bool Delete(int id) override {
+		std::lock_guard<std::mutex> lock{m_mutex};
 		m_session << "DELETE FROM meeting WHERE id=?", use(id), now;
 
-		i++;
+		m_count++;
 		Poco::Logger &logger = GetLoggers().getSqlLogger();
-		logger.information("executed query №" + std::to_string(i) + " delete meeting with id = " 
+		logger.information("executed query №" + std::to_string(m_count) + " delete meeting with id = " 
 				+ std::to_string(id));
 
 		return true;
@@ -207,7 +168,8 @@ public:
 
 private:
 	Poco::Data::Session m_session{sqlite::TYPE_SESSION, sqlite::DB_PATH};
-	int i=0;
+	int m_count=0;
+	std::mutex m_mutex;
 
 	int b2i(bool b) {
 		return b ? 1 : 0;

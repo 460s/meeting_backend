@@ -1,4 +1,3 @@
-#include <Poco/Logger.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <handlers.hpp>
 #include <handlers/error.hpp>
@@ -66,12 +65,6 @@ Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HT
 		return new Error(Poco::Net::HTTPResponse::HTTP_BAD_REQUEST, "Wrong endpoint " + uri);
 	}
 	return result;
-}
-
-std::mutex Factory::m_mutex;
-
-std::mutex &Factory::GetMutex(){
-	return m_mutex;
 }
 
 } // namespace handlers
