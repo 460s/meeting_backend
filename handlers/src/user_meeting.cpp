@@ -99,7 +99,10 @@ namespace handlers {
 
     class SqliteStorage : public Storage {
     public:
+        std::mutex m_mutex;
+
         void Save(Meeting &meeting) override {
+            std::lock_guard<std::mutex> lock{m_mutex};
             Poco::Logger &logger = Logger::GetLogger();
             if (meeting.id.has_value()) {
                 Statement update(m_session);
@@ -136,6 +139,7 @@ namespace handlers {
         }
 
         Storage::MeetingList GetList() override {
+            std::lock_guard<std::mutex> lock{m_mutex};
             Storage::MeetingList list;
             Meeting meeting;
             Statement select(m_session);
@@ -156,6 +160,7 @@ namespace handlers {
         }
 
         std::optional<Meeting> Get(int id) override {
+            std::lock_guard<std::mutex> lock{m_mutex};
             int cnt = 0;
             m_session << "SELECT COUNT(*) FROM meeting WHERE id=?", use(id), into(cnt), now;
             Poco::Logger &logger = Logger::GetLogger();
@@ -180,6 +185,7 @@ namespace handlers {
         }
 
         bool Delete(int id) override {
+            std::lock_guard<std::mutex> lock{m_mutex};
             m_session << "DELETE FROM meeting WHERE id=?", use(id), now;
             Poco::Logger &logger = Logger::GetLogger();
             std::string message = "Delete meeting with id " + std::to_string(id);

@@ -12,11 +12,13 @@
 #include <handlers/logger.hpp>
 #include <Poco/PatternFormatter.h>
 #include <Poco/FormattingChannel.h>
+#include <Poco/Data/SQLite/Utility.h>
 
 using Poco::Data::Keywords::now;
 
 int Server::main(const std::vector<std::string> &args) {
     Poco::Data::SQLite::Connector::registerConnector();
+    Poco::Data::SQLite::Utility::setThreadMode(Poco::Data::SQLite::Utility::THREAD_MODE_SINGLE);
     Poco::AutoPtr<Poco::FileChannel> pChannel(new Poco::FileChannel);
     pChannel->setProperty("path", "sample.log");
     pChannel->setProperty("rotation", "1024 K");
@@ -38,7 +40,7 @@ int Server::main(const std::vector<std::string> &args) {
     auto *parameters = new Poco::Net::HTTPServerParams();
     parameters->setTimeout(10000);
     parameters->setMaxQueued(100);
-    parameters->setMaxThreads(1);
+    parameters->setMaxThreads(2);
 
     Poco::Net::SocketAddress socket_address("127.0.0.1:8080");
     logger.information("Start server at 127.0.0.1:8080");
