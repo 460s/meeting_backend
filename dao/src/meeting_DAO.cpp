@@ -102,6 +102,7 @@ bool dao::MeetingDAO::Delete(int id) {
 }
 
 bool dao::MeetingDAO::HasEntity(int id) {
+    lock_guard<mutex> lock(this->m_mutex);
     auto session = SqliteSessionFactory::getInstance();
     bool has_meeting = false;
     session << "SELECT COUNT(*) FROM meeting WHERE id = ?", KW::into(has_meeting), KW::use(id), KW::now;
