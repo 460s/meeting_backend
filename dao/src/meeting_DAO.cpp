@@ -4,9 +4,12 @@
 
 namespace KW = Poco::Data::Keywords;
 using domain::MeetingTuple;
+using std::lock_guard;
+using std::mutex;
 
 void dao::MeetingDAO::Save(Meeting &meeting){
 
+    lock_guard<mutex> lock(this->m_mutex);
     auto logger = Logger::getInstance()->getLogger();
     auto session = SqliteSessionFactory::getInstance();
 
@@ -40,6 +43,7 @@ void dao::MeetingDAO::Save(Meeting &meeting){
 
 IDAO::MeetingList dao::MeetingDAO::GetList() {
 
+    lock_guard<mutex> lock(this->m_mutex);
     auto logger = Logger::getInstance()->getLogger();
     logger->information("Try to get all meetings");
     IDAO::MeetingList list;
@@ -63,6 +67,7 @@ IDAO::MeetingList dao::MeetingDAO::GetList() {
 }
 
 std::optional<Meeting> dao::MeetingDAO::Get(int id) {
+    lock_guard<mutex> lock(this->m_mutex);
     auto session = SqliteSessionFactory::getInstance();
     auto logger = Logger::getInstance()->getLogger();
     logger->information("Try to select single meeting");
@@ -81,6 +86,7 @@ std::optional<Meeting> dao::MeetingDAO::Get(int id) {
 }
 
 bool dao::MeetingDAO::Delete(int id) {
+    lock_guard<mutex> lock(this->m_mutex);
     auto logger = Logger::getInstance()->getLogger();
     logger->information("Try to delete single meeting with id="+std::to_string(id));
     auto session = SqliteSessionFactory::getInstance();
