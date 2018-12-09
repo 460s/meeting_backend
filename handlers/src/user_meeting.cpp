@@ -3,6 +3,7 @@
 #include <logger.hpp>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <mutex>
 #include <Poco/Data/Session.h>
 #include <Poco/Data/SQLite/Connector.h>
 #include <Poco/Net/HTTPServerRequest.h>
@@ -58,6 +59,7 @@ using Poco::Data::Statement;
 class SqliteStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
+		std::lock_guard<std::mutex> mutex{m_mutex};
 		if (meeting.id.has_value()) {
 			Statement update(m_session);
 			auto published = b2i(meeting.published);
@@ -88,6 +90,7 @@ public:
 	}
 
 	Storage::MeetingList GetList() override {
+		std::lock_guard<std::mutex> mutex{m_mutex};
 		Storage::MeetingList list;
 		Meeting meeting;
 		Statement select(m_session);
@@ -106,6 +109,7 @@ public:
 	}
 
 	std::optional<Meeting> Get(int id) override {
+		std::lock_guard<std::mutex> mutex{m_mutex};
 		int cnt = 0;
 		m_session << "SELECT COUNT(*) FROM meeting WHERE id=?", use(id), into(cnt), now;
 		if (cnt > 0) {
@@ -127,6 +131,7 @@ public:
 	}
 
 	bool Delete(int id) override {
+		std::lock_guard<std::mutex> mutex{m_mutex};
 		m_session << "DELETE FROM meeting WHERE id=?", use(id), now;
 		return true;
 	}
@@ -134,6 +139,8 @@ public:
 private:
 
 	Poco::Data::Session m_session{sqlite::TYPE_SESSION, sqlite::DB_PATH};
+
+	std::mutex m_mutex;
 
 	int b2i(bool b) {
 		return b ? 1 : 0;
