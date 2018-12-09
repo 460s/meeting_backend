@@ -19,7 +19,7 @@ int Server::main(const std::vector<std::string> &args) {
 	Poco::Data::SQLite::Utility::setThreadMode(Poco::Data::SQLite::Utility::THREAD_MODE_SINGLE);
 	if (std::find(args.begin(), args.end(), "init-db") != args.end()) {
 		Poco::Data::Session session(sqlite::TYPE_SESSION, sqlite::DB_PATH);
-		std::ifstream schema_stream(sqlite::SСHEMA_PATH);
+		std::ifstream schema_stream(sqlite::SCHEMA_PATH);
 		session << schema_stream.rdbuf(), now; // выполнить sql схему
 		return 0;
 	}

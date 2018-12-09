@@ -16,6 +16,11 @@ struct Meeting {
 	std::string name;
 	std::string description;
 	std::string address;
+	std::string signup_description;
+	int signup_from_date;
+	int signup_to_date;
+	int from_date;
+	int to_date;
 	bool published{false};
 };
 
@@ -24,11 +29,17 @@ using nlohmann::json;
 // сериализация (маршалинг)
 void to_json(json &j, const Meeting &m) {
 	j = json{
-	    {"id", m.id.value()},
-	    {"name", m.name},
-	    {"description", m.description},
-	    {"address", m.address},
-	    {"published", m.published}};
+		{"id", m.id.value()},
+		{"name", m.name},
+		{"description", m.description},
+		{"address", m.address},
+		{"signup_description", m.signup_description},
+		{"signup_from_date", m.signup_from_date},
+		{"signup_to_date", m.signup_to_date},
+		{"from_date", m.from_date},
+		{"to_date", m.to_date},
+		{"published", m.published}
+	};
 }
 
 // десериализация (анмаршалинг, распаковка)
@@ -36,6 +47,11 @@ void from_json(const json &j, Meeting &m) {
 	j.at("name").get_to(m.name);
 	j.at("description").get_to(m.description);
 	j.at("address").get_to(m.address);
+	j.at("signup_description").get_to(m.signup_description);
+	j.at("signup_from_date").get_to(m.signup_from_date);
+	j.at("signup_to_date").get_to(m.signup_to_date);
+	j.at("from_date").get_to(m.from_date);
+	j.at("to_date").get_to(m.to_date);
 	j.at("published").get_to(m.published);
 }
 
@@ -62,21 +78,35 @@ public:
 			Statement update(m_session);
 			auto published = b2i(meeting.published);
 			update << "UPDATE meeting SET "
-			          "name=?, description=?, address=?, published=? "
+			          "name=?, description=?, address=?, "
+			          "signup_description=?, signup_from_date=?, "
+			          "signup_to_date=?, from_date=?, to_date=?, published=?"
 			          "WHERE id=?",
 				use(meeting.name),
 				use(meeting.description),
 				use(meeting.address),
+				use(meeting.signup_description),
+				use(meeting.signup_from_date),
+				use(meeting.signup_to_date),
+				use(meeting.from_date),
+				use(meeting.to_date),
 				use(published),
 				use(meeting.id.value()),
 				now;
 		} else {
 			Statement insert(m_session);
 			int published = b2i(meeting.published);
-			insert << "INSERT INTO meeting (name, description, address, published) VALUES(?, ?, ?, ?)",
+			insert << "INSERT INTO meeting "
+			          "(name, description, address, signup_description, signup_from_date, signup_to_date, from_date, to_date, published) "
+			          "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
 				use(meeting.name),
 				use(meeting.description),
 				use(meeting.address),
+				use(meeting.signup_description),
+				use(meeting.signup_from_date),
+				use(meeting.signup_to_date),
+				use(meeting.from_date),
+				use(meeting.to_date),
 				use(published),
 				now;
 
@@ -91,11 +121,19 @@ public:
 		Storage::MeetingList list;
 		Meeting meeting;
 		Statement select(m_session);
-		select << "SELECT id, name, description, address, published FROM meeting",
+		select << "SELECT "
+			      "id, name, description, address, signup_description, "
+		          "signup_from_date, signup_to_date, from_date, to_date, published "
+			      "FROM meeting",
 			into(meeting.id.emplace()),
 			into(meeting.name),
 			into(meeting.description),
 			into(meeting.address),
+			into(meeting.signup_description),
+			into(meeting.signup_from_date),
+			into(meeting.signup_to_date),
+			into(meeting.from_date),
+			into(meeting.to_date),
 			into(meeting.published),
 			range(0, 1); //  iterate over result set one row at a time
 
@@ -112,12 +150,20 @@ public:
 			Meeting meeting;
 			Statement select(m_session);
 			int tmp_id = 0;
-			select << "SELECT id, name, description, address, published FROM meeting WHERE id=?",
+			select << "SELECT "
+					  "id, name, description, address, signup_description, "
+					  "signup_from_date, signup_to_date, from_date, to_date, published "
+	                  "FROM meeting WHERE id=?",
 				use(id),
 				into(tmp_id),
 				into(meeting.name),
 				into(meeting.description),
 				into(meeting.address),
+				into(meeting.signup_description),
+				into(meeting.signup_from_date),
+				into(meeting.signup_to_date),
+				into(meeting.from_date),
+				into(meeting.to_date),
 				into(meeting.published),
 				now;
 			meeting.id = tmp_id;
