@@ -21,6 +21,7 @@ using Poco::Data::Statement;
 class SqliteStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
+		Guard g{m_sqlite};
 		if (meeting.id.has_value()) {
 			Statement update(m_session);
 			auto published = b2i(meeting.published);
@@ -66,6 +67,7 @@ public:
 	}
 
 	Storage::MeetingList GetList() override {
+		Guard g{m_sqlite};
 		Storage::MeetingList list;
 		Meeting meeting;
 		Statement select(m_session);
@@ -92,6 +94,7 @@ public:
 	}
 
 	std::optional<Meeting> Get(int id) override {
+		Guard g{m_sqlite};
 		int cnt = 0;
 		m_session << "SELECT COUNT(*) FROM meeting WHERE id=?", use(id), into(cnt), now;
 		if (cnt > 0) {
@@ -121,11 +124,14 @@ public:
 	}
 
 	bool Delete(int id) override {
+		Guard g{m_sqlite};
 		m_session << "DELETE FROM meeting WHERE id=?", use(id), now;
 		return true;
 	}
 
 private:
+	std::mutex m_sqlite;
+	using Guard = std::lock_guard<std::mutex>;
 	Poco::Data::Session m_session{sqlite::TYPE_SESSION, sqlite::DB_PATH};
 
 	int b2i(bool b) {
