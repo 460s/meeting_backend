@@ -1,70 +1,17 @@
 #include "handlers.hpp"
 #include <iostream>
 #include <logger.hpp>
-#include <nlohmann/json.hpp>
 #include <optional>
 #include <Poco/Data/Session.h>
 #include <Poco/Data/SQLite/Connector.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
+#include <user_meeting.hpp>
 #include <sqlite.hpp>
 
 namespace handlers {
 
-struct Meeting {
-	std::optional<int> id;
-	std::string name;
-	std::string description;
-	std::string address;
-	std::string signup_description;
-	int signup_from_date;
-	int signup_to_date;
-	int from_date;
-	int to_date;
-	bool published{false};
-};
-
 using nlohmann::json;
-
-// сериализация (маршалинг)
-void to_json(json &j, const Meeting &m) {
-	j = json{
-		{"id", m.id.value()},
-		{"name", m.name},
-		{"description", m.description},
-		{"address", m.address},
-		{"signup_description", m.signup_description},
-		{"signup_from_date", m.signup_from_date},
-		{"signup_to_date", m.signup_to_date},
-		{"from_date", m.from_date},
-		{"to_date", m.to_date},
-		{"published", m.published}
-	};
-}
-
-// десериализация (анмаршалинг, распаковка)
-void from_json(const json &j, Meeting &m) {
-	j.at("name").get_to(m.name);
-	j.at("description").get_to(m.description);
-	j.at("address").get_to(m.address);
-	j.at("signup_description").get_to(m.signup_description);
-	j.at("signup_from_date").get_to(m.signup_from_date);
-	j.at("signup_to_date").get_to(m.signup_to_date);
-	j.at("from_date").get_to(m.from_date);
-	j.at("to_date").get_to(m.to_date);
-	j.at("published").get_to(m.published);
-}
-
-class Storage {
-public:
-	using MeetingList = std::vector<Meeting>;
-	virtual void Save(Meeting &meeting) = 0;
-	virtual MeetingList GetList() = 0;
-	virtual std::optional<Meeting> Get(int id) = 0;
-	virtual bool Delete(int id) = 0;
-	virtual ~Storage() = default;
-};
-
 using Poco::Data::Keywords::into;
 using Poco::Data::Keywords::now;
 using Poco::Data::Keywords::range;
@@ -97,7 +44,8 @@ public:
 			Statement insert(m_session);
 			int published = b2i(meeting.published);
 			insert << "INSERT INTO meeting "
-			          "(name, description, address, signup_description, signup_from_date, signup_to_date, from_date, to_date, published) "
+			          "(name, description, address, signup_description, "
+			          "signup_from_date, signup_to_date, from_date, to_date, published) "
 			          "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
 				use(meeting.name),
 				use(meeting.description),
@@ -178,7 +126,6 @@ public:
 	}
 
 private:
-
 	Poco::Data::Session m_session{sqlite::TYPE_SESSION, sqlite::DB_PATH};
 
 	int b2i(bool b) {
@@ -206,6 +153,7 @@ void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &/*request*
 void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 	nlohmann::json j = nlohmann::json::parse(request.stream());
+	meeting::GetLogger().information("UserMeetingCreate json: " + j.dump());
 	auto &storage = GetStorage();
 	Meeting meeting = j;
 	storage.Save(meeting);
