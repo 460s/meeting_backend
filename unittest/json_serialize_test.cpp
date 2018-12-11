@@ -33,3 +33,41 @@ json target = R"(
 CHECK(json::diff(json(source), target).empty());
 }
 
+TEST_CASE("json_unmarshal") {
+    domain::Meeting target;
+    target.name = "test";
+    target.address = "addr";
+    target.description ="desc";
+    target.signup_description = "sdesc";
+    target.signup_from_date = 1;
+    target.signup_to_date = 2;
+    target.from_date = 3;
+    target.to_date = 4;
+    target.published = true;
+    json source = R"(
+	{
+		"name": "test",
+		"address": "addr",
+		"description": "desc",
+		"signup_description": "sdesc",
+		"signup_from_date": 1,
+		"signup_to_date": 2,
+		"from_date": 3,
+		"to_date": 4,
+		"published": true
+	}
+ )"_json;
+    auto result = domain::Meeting(source);
+
+
+
+    CHECK(static_cast<bool>(
+            result.name == target.name && result.address == target.address &&
+            result.description == target.description &&
+            result.signup_description == target.signup_description &&
+            result.signup_from_date == target.signup_from_date &&
+            result.signup_to_date == target.signup_to_date &&
+            result.from_date == target.from_date &&
+            result.to_date == target.to_date &&
+            result.published == target.published));
+}
