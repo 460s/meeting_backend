@@ -41,9 +41,9 @@ class RestHandler : public Poco::Net::HTTPRequestHandler {
 
 namespace handlers {
 
-    REGISTER_HANDLER(UserMeetingList);
+REGISTER_HANDLER(UserMeetingList);
 
-    REGISTER_HANDLER(UserMeetingCreate);
+REGISTER_HANDLER(UserMeetingCreate);
 
 REGISTER_HANDLER_WITH_ID(UserMeetingRead);
 
