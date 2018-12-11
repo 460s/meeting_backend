@@ -1,5 +1,6 @@
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include <catch2/catch.hpp>
+#include <user_meeting.hpp>
 #include <iostream>
 
 using nlohmann::json;
@@ -37,9 +38,8 @@ json target = R"(
 }
 
 TEST_CASE("json_unmarshal") {
-	json source = R"(
+	char source[] = R"(
 		{
-			"id": 1,
 			"name": "test",
 			"address": "addr",
 			"description": "desc",
@@ -50,19 +50,31 @@ TEST_CASE("json_unmarshal") {
 			"to_date": 4,
 			"published": true
 		}
-	)"_json;
+	)";
+	auto parsed_json = nlohmann::json::parse(source);
+	handlers::Meeting target = parsed_json;
+	// std::cout << std::setw(2) << parsed_json << "\n\n";	
 
-	handlers::Meeting target;
-	target.id = 1;
-	target.name = "test";
-	target.address = "addr";
-	target.description = "desc";
-	target.signup_description = "sdesc";
-	target.signup_from_date = 1;
-	target.signup_to_date = 2;
-	target.from_date = 3;
-	target.to_date = 4;
-	target.published = true;
+	handlers::Meeting expected;
+	expected.name = "test";
+	expected.address = "addr";
+	expected.description = "desc";
+	expected.signup_description = "sdesc";
+	expected.signup_from_date = 1;
+	expected.signup_to_date = 2;
+	expected.from_date = 3;
+	expected.to_date = 4;
+	expected.published = true;
 
-	CHECK(json::diff(source, json(target)).empty());
+	CHECK(
+		target.name == expected.name &&
+		target.address == expected.address &&
+		target.description == expected.description &&
+		target.signup_description == expected.signup_description &&
+		target.signup_from_date == expected.signup_from_date &&
+		target.signup_to_date == expected.signup_to_date &&
+		target.from_date == expected.from_date &&
+		target.to_date == expected.to_date &&
+		target.published == expected.published
+	);
 }
