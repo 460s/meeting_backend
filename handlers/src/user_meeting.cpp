@@ -10,48 +10,12 @@
 
 #include <loggers.hpp>
 #include <handlers.hpp>
+#include <user_meeting.hpp>
 #include <sqlite.hpp>
 
 namespace handlers {
 
-struct Meeting {
-	std::optional<int> id;
-	std::string name;
-	std::string description;
-	std::string address;
-	bool published{false};
-};
-
 using nlohmann::json;
-
-// сериализация (маршалинг)
-void to_json(json &j, const Meeting &m) {
-	j = json{
-		{"id", m.id.value()},
-		{"name", m.name},
-		{"description", m.description},
-		{"address", m.address},
-		{"published", m.published}};
-}
-
-// десериализация (анмаршалинг, распаковка)
-void from_json(const json &j, Meeting &m) {
-	j.at("name").get_to(m.name);
-	j.at("description").get_to(m.description);
-	j.at("address").get_to(m.address);
-	j.at("published").get_to(m.published);
-}
-
-class Storage {
-public:
-	using MeetingList = std::vector<Meeting>;
-	virtual void Save(Meeting &meeting) = 0;
-	virtual MeetingList GetList() = 0;
-	virtual std::optional<Meeting> Get(int id) = 0;
-	virtual bool Delete(int id) = 0;
-	virtual ~Storage() = default;
-};
-
 using Poco::Data::Statement;
 using Poco::Data::Keywords::into;
 using Poco::Data::Keywords::now;

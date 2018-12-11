@@ -18,4 +18,10 @@ add_subdirectory(handlers)
 
 add_executable(${PROJECT_NAME} main.cpp src/server.cpp $<TARGET_OBJECTS:handlers>)
 target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS})
+
+enable_testing()
+add_executable(meeting_test	unittest/json_test.cpp)
+target_link_libraries(meeting_test ${CONAN_LIBS})
+add_test(NAME meeting_test COMMAND meeting_test)
+
 file(COPY schema.sql DESTINATION etc)
