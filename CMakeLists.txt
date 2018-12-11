@@ -27,3 +27,8 @@ add_executable(${PROJECT_NAME}
 		$<TARGET_OBJECTS:handlers>)
 
 target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS})
+
+enable_testing()
+add_executable(meeting_test	unittest/json_serialize_test.cpp $<TARGET_OBJECTS:domain>)
+target_link_libraries(meeting_test ${CONAN_LIBS})
+add_test(NAME meeting_test COMMAND meeting_test)
