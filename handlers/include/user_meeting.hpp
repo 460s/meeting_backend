@@ -1,7 +1,7 @@
 #pragma once
 
-#include <optional>
 #include <nlohmann/json.hpp>
+#include <optional>
 
 namespace handlers {
 
@@ -31,17 +31,16 @@ public:
 // сериализация (маршалинг)
 inline void to_json(nlohmann::json &j, const Meeting &m) {
 	j = nlohmann::json{
-			{"id", m.id.value()},
-			{"name", m.name},
-			{"description", m.description},
-			{"address", m.address},
-			{"signup_description", m.signup_description},
-			{"signup_from_date", m.signup_from_date},
-			{"signup_to_date", m.signup_to_date},
-			{"from_date", m.from_date},
-			{"to_date", m.to_date},
-			{"published", m.published}
-	};
+	    {"id", m.id.value()},
+	    {"name", m.name},
+	    {"description", m.description},
+	    {"address", m.address},
+	    {"signup_description", m.signup_description},
+	    {"signup_from_date", m.signup_from_date},
+	    {"signup_to_date", m.signup_to_date},
+	    {"from_date", m.from_date},
+	    {"to_date", m.to_date},
+	    {"published", m.published}};
 }
 
 // десериализация (анмаршалинг, распаковка)
@@ -57,4 +56,4 @@ inline void from_json(const nlohmann::json &j, Meeting &m) {
 	j.at("published").get_to(m.published);
 }
 
-} //handlers
+} // namespace handlers
