@@ -1,6 +1,5 @@
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include <catch2/catch.hpp>
-#include <user_meeting.hpp>
 #include <iostream>
 
 using nlohmann::json;
@@ -34,6 +33,36 @@ json target = R"(
 	}
  )"_json;
 
+	CHECK(json::diff(json(source), target).empty());
+}
 
-CHECK(json::diff(json(source),target).empty() == true);
+TEST_CASE("json_unmarshal") {
+	json source = R"(
+		{
+			"id": 1,
+			"name": "test",
+			"address": "addr",
+			"description": "desc",
+			"signup_description": "sdesc",
+			"signup_from_date": 1,
+			"signup_to_date": 2,
+			"from_date": 3,
+			"to_date": 4,
+			"published": true
+		}
+	)"_json;
+
+	handlers::Meeting target;
+	target.id = 1;
+	target.name = "test";
+	target.address = "addr";
+	target.description = "desc";
+	target.signup_description = "sdesc";
+	target.signup_from_date = 1;
+	target.signup_to_date = 2;
+	target.from_date = 3;
+	target.to_date = 4;
+	target.published = true;
+
+	CHECK(json::diff(source, json(target)).empty());
 }
