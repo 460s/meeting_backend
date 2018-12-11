@@ -16,7 +16,6 @@ int Server::main(const std::vector<std::string> &args) {
 
     auto logger = Logger::getInstance()->getLogger();
     Poco::Data::SQLite::Connector::registerConnector();
-    Poco::Data::SQLite::Utility::setThreadMode(Poco::Data::SQLite::Utility::THREAD_MODE_SINGLE);
     if (std::find(args.begin(), args.end(), "init-db") != args.end()) {
         logger->information("New schema was created");
         Poco::Data::SQLite::Connector::registerConnector();
@@ -27,6 +26,11 @@ int Server::main(const std::vector<std::string> &args) {
                       name TEXT UNIQUE NOT NULL,
                       description TEXT NOT NULL,
                       address TEXT NOT NULL,
+                      signup_description TEXT NOT NULL,
+                      signup_from_date INTEGER NOT NULL,
+                      signup_to_date INTEGER NOT NULL,
+                      from_date INTEGER NOT NULL,
+                      to_date INTEGER NOT NULL,
                       published INTEGER NOT NULL
                     );)", now;
         return 0;

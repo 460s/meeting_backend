@@ -4,12 +4,9 @@
 
 namespace KW = Poco::Data::Keywords;
 using domain::MeetingTuple;
-using std::lock_guard;
-using std::mutex;
 
 void dao::MeetingDAO::Save(Meeting &meeting){
 
-    lock_guard<mutex> lock(this->m_mutex);
     auto logger = Logger::getInstance()->getLogger();
     auto session = SqliteSessionFactory::getInstance();
 
@@ -17,7 +14,17 @@ void dao::MeetingDAO::Save(Meeting &meeting){
     if (meeting.id) {
         logger->information("try to update meeting with id="+std::to_string(meeting.id.value()));
         MeetingTuple mt = Meeting::MeetingStruct2Tuple(meeting);
-        session << "UPDATE meeting SET name = ?, description = ?, address = ?, published = ? WHERE id = ?",
+        session << R"(UPDATE meeting
+                    SET name = ?,
+                        description = ?,
+                        address = ?,
+                        signup_description = ?,
+                        signup_from_date = ?,
+                        signup_to_date = ?,
+                        from_date = ?,
+                        to_date = ?,
+                        published = ?
+                    WHERE id = ?)",
                     KW::use(mt),
                     KW::use(meeting.id.value()),
                     KW::now;
@@ -26,7 +33,7 @@ void dao::MeetingDAO::Save(Meeting &meeting){
         logger->information("try to insert new meeting");
         std::vector<MeetingTuple> v;
         v.push_back(Meeting::MeetingStruct2Tuple(meeting));
-        session << "INSERT INTO meeting VALUES(NULL, ?, ?, ?, ?)",
+        session << "INSERT INTO meeting VALUES(NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     KW::use(v),
                     KW::now;
         int id = -1;
@@ -43,7 +50,6 @@ void dao::MeetingDAO::Save(Meeting &meeting){
 
 IDAO::MeetingList dao::MeetingDAO::GetList() {
 
-    lock_guard<mutex> lock(this->m_mutex);
     auto logger = Logger::getInstance()->getLogger();
     logger->information("Try to get all meetings");
     IDAO::MeetingList list;
@@ -53,7 +59,17 @@ IDAO::MeetingList dao::MeetingDAO::GetList() {
     int id = 0;
 
     Poco::Data::Statement select(session);
-    select << "SELECT id, name, description, address, published FROM meeting",
+    select << R"(SELECT id,
+                        name,
+                        description,
+                        address,
+                        signup_description,
+                        signup_from_date,
+                        signup_to_date,
+                        from_date,
+                        to_date,
+                        published
+                FROM meeting)",
                 KW::into(id),
                 KW::into(mp),
                 KW::range(0, 1);
@@ -67,13 +83,23 @@ IDAO::MeetingList dao::MeetingDAO::GetList() {
 }
 
 std::optional<Meeting> dao::MeetingDAO::Get(int id) {
-    lock_guard<mutex> lock(this->m_mutex);
     auto session = SqliteSessionFactory::getInstance();
     auto logger = Logger::getInstance()->getLogger();
     logger->information("Try to select single meeting");
     if (HasEntity(id)) {
         MeetingTuple mp;
-        session << "SELECT name, description, address, published FROM meeting WHERE id = ?",
+        session << R"(SELECT
+                        name,
+                        description,
+                        address,
+                        signup_description,
+                        signup_from_date,
+                        signup_to_date,
+                        from_date,
+                        to_date,
+                        published
+                    FROM meeting
+                    WHERE id = ?)",
                     KW::use(id),
                     KW::into(mp),
                     KW::now;
@@ -86,7 +112,6 @@ std::optional<Meeting> dao::MeetingDAO::Get(int id) {
 }
 
 bool dao::MeetingDAO::Delete(int id) {
-    lock_guard<mutex> lock(this->m_mutex);
     auto logger = Logger::getInstance()->getLogger();
     logger->information("Try to delete single meeting with id="+std::to_string(id));
     auto session = SqliteSessionFactory::getInstance();
@@ -102,7 +127,7 @@ bool dao::MeetingDAO::Delete(int id) {
 }
 
 bool dao::MeetingDAO::HasEntity(int id) {
-    lock_guard<mutex> lock(this->m_mutex);
+
     auto session = SqliteSessionFactory::getInstance();
     bool has_meeting = false;
     session << "SELECT COUNT(*) FROM meeting WHERE id = ?", KW::into(has_meeting), KW::use(id), KW::now;

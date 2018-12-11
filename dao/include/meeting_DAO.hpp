@@ -10,8 +10,6 @@ public:
     std::optional<Meeting> Get(int id) override;
     bool Delete(int id) override;
     bool HasEntity(int id) override;
-private:
-    std::mutex m_mutex;
 };
 
 }
