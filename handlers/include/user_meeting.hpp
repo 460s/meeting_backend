@@ -16,6 +16,19 @@ struct Meeting {
 	int from_date;
 	int to_date;
 	bool published{false};
+
+	bool operator == (const Meeting & meeting) const {
+		return //id.value() == meeting.id.value() &&
+			name == meeting.name &&
+			description == meeting.description &&
+			address == meeting.address &&
+			signup_description == meeting.signup_description &&
+			signup_from_date == meeting.signup_from_date &&
+			signup_to_date == meeting.signup_to_date &&
+			from_date == meeting.from_date &&
+			to_date == meeting.to_date &&
+			published == meeting.published;
+	}
 };
 
 class Storage {
