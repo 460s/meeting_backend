@@ -67,7 +67,7 @@ TEST_CASE("json_unmarshal") {
 	expected.published = true;
 
 	CHECK(
-		target.name == expected.name &&
+		(target.name == expected.name &&
 		target.address == expected.address &&
 		target.description == expected.description &&
 		target.signup_description == expected.signup_description &&
@@ -75,6 +75,6 @@ TEST_CASE("json_unmarshal") {
 		target.signup_to_date == expected.signup_to_date &&
 		target.from_date == expected.from_date &&
 		target.to_date == expected.to_date &&
-		target.published == expected.published
+		target.published == expected.published)
 	);
 }
